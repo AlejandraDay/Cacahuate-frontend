@@ -1,0 +1,64 @@
+import apiClient from './api';
+import type { FormTemplate, FormAssignment, FormField, AppointmentFormInfo } from '../types';
+
+interface CreateFormTemplatePayload {
+  name: string;
+  description?: string;
+  fields: Omit<FormField, 'id'>[];
+}
+
+interface AssignFormPayload {
+  formTemplateId: string;
+  patientId: string;
+  notes?: string;
+}
+
+interface SubmitFormPayload {
+  answers: { fieldId: string; value: string }[];
+}
+
+export const formsService = {
+  // Admin — templates
+  async createTemplate(data: CreateFormTemplatePayload): Promise<FormTemplate> {
+    const response = await apiClient.post<FormTemplate>('/forms/templates', data);
+    return response.data;
+  },
+
+  async getTemplates(): Promise<FormTemplate[]> {
+    const response = await apiClient.get<FormTemplate[]>('/forms/templates');
+    return response.data;
+  },
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    await apiClient.delete(`/forms/templates/${templateId}`);
+  },
+
+  // Admin — assignments
+  async assignTemplate(data: AssignFormPayload): Promise<FormAssignment> {
+    const response = await apiClient.post<FormAssignment>('/forms/assignments', data);
+    return response.data;
+  },
+
+  async getAllAssignments(): Promise<FormAssignment[]> {
+    const response = await apiClient.get<FormAssignment[]>('/forms/assignments');
+    return response.data;
+  },
+
+  // Therapist — per appointment
+  async getFormForAppointment(appointmentId: string): Promise<AppointmentFormInfo> {
+    const response = await apiClient.get<AppointmentFormInfo>(`/forms/for-appointment/${appointmentId}`);
+    return response.data;
+  },
+
+  async submitForm(
+    appointmentId: string,
+    assignmentId: string,
+    data: SubmitFormPayload
+  ): Promise<AppointmentFormInfo> {
+    const response = await apiClient.post<AppointmentFormInfo>(
+      `/forms/for-appointment/${appointmentId}/submit/${assignmentId}`,
+      data
+    );
+    return response.data;
+  },
+};

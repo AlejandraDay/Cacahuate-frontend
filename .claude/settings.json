@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\" --list-sdks 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\" --list-runtimes 2>&1)",
+      "Read(//c/Program Files/Microsoft Visual Studio/**)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\JetBrains\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \"$env:LOCALAPPDATA\\\\JetBrains\" -ErrorAction SilentlyContinue | Select-Object Name)"
+    ]
+  }
+}
