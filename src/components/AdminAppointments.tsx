@@ -14,12 +14,16 @@ import {
   ClipboardDocumentListIcon,
   FunnelIcon,
   InboxIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { useAuth } from '../hooks/useAuth'
 import { schedulingService } from '../services/scheduling'
-import type { Appointment } from '../types'
+import { formsService } from '../services/forms'
+import type { Appointment, FormSubmissionResult } from '../types'
 import ConfirmDialog from './ConfirmDialog'
 import ProgressViewModal from './ProgressViewModal'
+import FormSubmissionModal from './FormSubmissionModal'
 
 const toLocalDate = (dateStr: string) => {
   const [y, m, d] = dateStr.split('T')[0].split('-').map(Number)
@@ -43,6 +47,21 @@ const statusLabel = (status: unknown): string => {
   return String(status ?? '')
 }
 
+const renderRatingStars = (stars?: number) => {
+  const count = Math.max(0, Math.min(5, stars ?? 0))
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        index < count ? (
+          <StarIconSolid key={index} className="w-4 h-4 text-amber-500" />
+        ) : (
+          <StarIcon key={index} className="w-4 h-4 text-gray-200" />
+        )
+      ))}
+    </span>
+  )
+}
+
 const AdminAppointments: React.FC = () => {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'pending' | 'reports'>('pending')
@@ -54,6 +73,9 @@ const AdminAppointments: React.FC = () => {
   const [success, setSuccess] = useState('')
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
   const [progressView, setProgressView] = useState<Appointment | null>(null)
+  const [submissionView, setSubmissionView] = useState<FormSubmissionResult | null>(null)
+  const [submissionLoading, setSubmissionLoading] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
 
   const [patientFilter, setPatientFilter] = useState('all')
   const [therapistFilter, setTherapistFilter] = useState('all')
@@ -101,6 +123,21 @@ const AdminAppointments: React.FC = () => {
     setTherapistFilter('all')
     setDateFrom('')
     setDateTo('')
+  }
+
+  const handleOpenSubmission = async (appointment: Appointment) => {
+    if (!appointment.formSubmissionId) return
+    try {
+      setSubmissionLoading(true)
+      setSubmissionError('')
+      const submission = await formsService.getSubmission(appointment.formSubmissionId)
+      setSubmissionView(submission)
+    } catch (err) {
+      setSubmissionError(err instanceof Error ? err.message : 'No se pudo cargar el informe')
+      setSubmissionView(null)
+    } finally {
+      setSubmissionLoading(false)
+    }
   }
 
   const handleApprove = async (id: string) => {
@@ -393,13 +430,16 @@ const AdminAppointments: React.FC = () => {
                   <p className="text-xs text-gray-500 mb-1">
                     {toLocalDate(apt.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })} · {apt.startTime}
                   </p>
-                  <p className="text-xs text-gray-500 mb-3">{apt.therapistName || apt.therapistId}</p>
+                  <p className="text-xs text-gray-500 mb-3 flex items-center gap-1">
+                    {apt.ratingStars != null ? renderRatingStars(apt.ratingStars) : 'Sin calificación'}
+                  </p>
                   <button
-                    onClick={() => setProgressView(apt)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors"
+                    onClick={() => handleOpenSubmission(apt)}
+                    disabled={!apt.formSubmissionId}
+                    className={`w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors ${apt.formSubmissionId ? 'bg-blue-50 hover:bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                   >
                     <ClipboardDocumentListIcon className="w-4 h-4" />
-                    {apt.progressUpdatedAt ? 'Ver reporte' : 'Sin reporte aún'}
+                    {apt.formSubmissionId ? 'Ver informe' : 'Sin informe'}
                   </button>
                 </div>
               ))}
@@ -407,23 +447,27 @@ const AdminAppointments: React.FC = () => {
 
             {/* Desktop table */}
             <div className="hidden lg:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-6 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
+              <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-7 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
                 <div>Paciente</div>
                 <div>Terapeuta</div>
                 <div>Fecha</div>
                 <div>Hora</div>
+                <div>Calificación</div>
                 <div>Estado</div>
                 <div className="text-right">Reporte</div>
               </div>
               <div className="divide-y divide-gray-100">
                 {filteredReports.map((apt) => (
-                  <div key={apt.id} className="grid px-6 py-4 grid-cols-6 gap-4 items-center hover:bg-gray-50 transition-colors">
+                  <div key={apt.id} className="grid px-6 py-4 grid-cols-7 gap-4 items-center hover:bg-gray-50 transition-colors">
                     <p className="font-semibold text-gray-900 text-sm">{apt.patientName || apt.patientId}</p>
                     <p className="text-sm text-gray-600">{apt.therapistName || apt.therapistId}</p>
                     <p className="text-sm text-gray-600">
                       {toLocalDate(apt.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })}
                     </p>
                     <p className="text-sm text-gray-600">{apt.startTime}</p>
+                    <p className="text-sm text-gray-600 flex items-center gap-1">
+                      {apt.ratingStars != null ? renderRatingStars(apt.ratingStars) : 'Sin calificación'}
+                    </p>
                     <span className={`w-fit inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                       statusStr(apt.status) === 'completed'  ? 'bg-blue-50 text-blue-700 border-blue-100' :
                       statusStr(apt.status) === 'confirmed'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
@@ -436,11 +480,12 @@ const AdminAppointments: React.FC = () => {
                     </span>
                     <div className="text-right">
                       <button
-                        onClick={() => setProgressView(apt)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors"
+                        onClick={() => handleOpenSubmission(apt)}
+                        disabled={!apt.formSubmissionId}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${apt.formSubmissionId ? 'bg-blue-50 hover:bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                       >
                         <ClipboardDocumentListIcon className="w-4 h-4" />
-                        {apt.progressUpdatedAt ? 'Ver reporte' : 'Sin reporte'}
+                        {apt.formSubmissionId ? 'Ver informe' : 'Sin informe'}
                       </button>
                     </div>
                   </div>
@@ -473,6 +518,16 @@ const AdminAppointments: React.FC = () => {
       <ProgressViewModal
         appointment={progressView}
         onClose={() => setProgressView(null)}
+      />
+
+      <FormSubmissionModal
+        submission={submissionView}
+        loading={submissionLoading}
+        error={submissionError}
+        onClose={() => {
+          setSubmissionView(null)
+          setSubmissionError('')
+        }}
       />
     </div>
   )

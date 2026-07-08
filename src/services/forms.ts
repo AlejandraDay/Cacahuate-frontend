@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { FormTemplate, FormAssignment, FormField, AppointmentFormInfo } from '../types';
+import type { FormTemplate, FormAssignment, FormField, AppointmentFormInfo, FormSubmissionResult } from '../types';
 
 interface CreateFormTemplatePayload {
   name: string;
@@ -47,6 +47,11 @@ export const formsService = {
   // Therapist — per appointment
   async getFormForAppointment(appointmentId: string): Promise<AppointmentFormInfo> {
     const response = await apiClient.get<AppointmentFormInfo>(`/forms/for-appointment/${appointmentId}`);
+    return response.data;
+  },
+
+  async getSubmission(submissionId: string): Promise<FormSubmissionResult> {
+    const response = await apiClient.get<FormSubmissionResult>(`/forms/submissions/${submissionId}`);
     return response.data;
   },
 

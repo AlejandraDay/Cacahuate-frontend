@@ -118,6 +118,8 @@ export interface Appointment {
   enRouteAt?: string;
   inProgressAt?: string;
   isRated?: boolean;
+  ratingStars?: number;
+  formSubmissionId?: string;
   createdAt?: string;
 }
 

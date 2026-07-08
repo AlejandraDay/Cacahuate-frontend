@@ -23,11 +23,13 @@ import {
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { schedulingService } from '../services/scheduling'
-import type { Appointment, Therapist, Patient, TherapistAvailability } from '../types'
+import { formsService } from '../services/forms'
+import type { Appointment, Therapist, Patient, TherapistAvailability, FormSubmissionResult } from '../types'
 import Calendar from './Calendar'
 import ConfirmDialog from './ConfirmDialog'
 import RateTherapistModal from './RateTherapistModal'
 import ProgressViewModal from './ProgressViewModal'
+import FormSubmissionModal from './FormSubmissionModal'
 
 const toLocalDateStr = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -73,6 +75,9 @@ const ParentAppointments: React.FC = () => {
   const [success, setSuccess] = useState('')
   const [filter, setFilter] = useState('upcoming')
   const [activeTab, setActiveTab] = useState('appointments')
+  const [submissionView, setSubmissionView] = useState<FormSubmissionResult | null>(null)
+  const [submissionLoading, setSubmissionLoading] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
   const [rateTarget, setRateTarget] = useState<Appointment | null>(null)
   const [ratingLoading, setRatingLoading] = useState(false)
@@ -199,6 +204,21 @@ const ParentAppointments: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Error al enviar la calificación')
     } finally {
       setRatingLoading(false)
+    }
+  }
+
+  const handleOpenSubmission = async (appointment: Appointment) => {
+    if (!appointment.formSubmissionId) return
+    try {
+      setSubmissionLoading(true)
+      setSubmissionError('')
+      const submission = await formsService.getSubmission(appointment.formSubmissionId)
+      setSubmissionView(submission)
+    } catch (err) {
+      setSubmissionError(err instanceof Error ? err.message : 'No se pudo cargar el informe')
+      setSubmissionView(null)
+    } finally {
+      setSubmissionLoading(false)
     }
   }
 
@@ -392,13 +412,24 @@ const ParentAppointments: React.FC = () => {
                   )}
                   {statusStr(apt.status) === 'completed' && (
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setProgressView(apt)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
-                      >
-                        <ClipboardDocumentListIcon className="w-4 h-4" />
-                        Ver progreso
-                      </button>
+                      {apt.formSubmissionId ? (
+                        <button
+                          onClick={() => handleOpenSubmission(apt)}
+                          disabled={submissionLoading}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
+                        >
+                          <ClipboardDocumentListIcon className="w-4 h-4" />
+                          Ver informe
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setProgressView(apt)}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
+                        >
+                          <ClipboardDocumentListIcon className="w-4 h-4" />
+                          Ver progreso
+                        </button>
+                      )}
                       {apt.isRated ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-100 text-amber-700 rounded-xl text-xs font-semibold">
                           <StarIconSolid className="w-3.5 h-3.5" />
@@ -684,6 +715,16 @@ const ParentAppointments: React.FC = () => {
       <ProgressViewModal
         appointment={progressView}
         onClose={() => setProgressView(null)}
+      />
+
+      <FormSubmissionModal
+        submission={submissionView}
+        loading={submissionLoading}
+        error={submissionError}
+        onClose={() => {
+          setSubmissionView(null)
+          setSubmissionError('')
+        }}
       />
     </div>
   )

@@ -93,8 +93,23 @@ const AppointmentFormModal: React.FC<{
   const setAnswer = (fieldId: string, value: string) =>
     setAnswers(prev => ({ ...prev, [fieldId]: value }))
 
-  const canSubmit = formInfo?.fields
-    ?.filter(f => f.isRequired)
+  const isHiddenPatientNameField = (field: FormField) => {
+    const normalizedLabel = field.label.trim().toLowerCase().replace(/\s+/g, ' ')
+    return [
+      'name',
+      'nombre',
+      'patient name',
+      'nombre del paciente',
+      'full name',
+      'nombre completo',
+    ].includes(normalizedLabel)
+  }
+
+  const visibleFields = formInfo?.fields?.filter(field => !isHiddenPatientNameField(field)) ?? []
+  const hiddenNameFields = formInfo?.fields?.filter(isHiddenPatientNameField) ?? []
+
+  const canSubmit = visibleFields
+    .filter(f => f.isRequired)
     .every(f => (answers[f.id] ?? '').trim() !== '') ?? false
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,8 +118,18 @@ const AppointmentFormModal: React.FC<{
     setError('')
     setSubmitting(true)
     try {
+      const visibleAnswers = visibleFields.map(field => ({
+        fieldId: field.id,
+        value: answers[field.id] ?? '',
+      }))
+
+      const hiddenAnswers = hiddenNameFields.map(field => ({
+        fieldId: field.id,
+        value: appointment.patientName ?? '',
+      }))
+
       const result = await formsService.submitForm(appointment.id, formInfo.assignmentId, {
-        answers: Object.entries(answers).map(([fieldId, value]) => ({ fieldId, value })),
+        answers: [...visibleAnswers, ...hiddenAnswers],
       })
       setFormInfo(result)
     } catch (err) {
@@ -169,7 +194,12 @@ const AppointmentFormModal: React.FC<{
                   Instrucciones: "{formInfo.notes}"
                 </div>
               )}
-              {formInfo.fields.map(field => (
+              {hiddenNameFields.length > 0 && (
+                <div className="px-3 py-2 bg-blue-50 rounded-xl text-xs text-blue-700 mb-3">
+                  El nombre del paciente se completará automáticamente desde la cita.
+                </div>
+              )}
+              {visibleFields.map(field => (
                 <div key={field.id}>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     {field.label}
