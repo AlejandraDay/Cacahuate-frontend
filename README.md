@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# Cacahuate Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación frontend en React + TypeScript + Vite para el sistema de gestión de citas y pacientes.
 
-Currently, two official plugins are available:
+## Requisitos previos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Asegúrate de tener instalado:
 
-## React Compiler
+- Node.js 20 o superior
+- npm (viene con Node.js)
+- Visual Studio Code
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Abrir el proyecto en Visual Studio Code
 
-## Expanding the ESLint configuration
+1. Abre Visual Studio Code.
+2. Selecciona Archivo > Abrir Carpeta.
+3. Elige la carpeta del proyecto: `Cacahuate-frontend`.
+4. Abre la terminal integrada con Ctrl + `.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Instalar dependencias
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Desde la raíz del proyecto ejecuta:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Ejecutar la aplicación en modo desarrollo
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Vite mostrará una URL similar a:
+
+```text
+http://localhost:5173/
+```
+
+Abre esa URL en tu navegador para ver la aplicación.
+
+## Scripts disponibles
+
+- `npm run dev` → inicia el servidor de desarrollo.
+- `npm run build` → genera la versión de producción.
+- `npm run preview` → previsualiza la build generada.
+- `npm run lint` → ejecuta ESLint.
+
+## Importante para el funcionamiento
+
+Esta interfaz consume la API backend en:
+
+```text
+https://localhost:7191/api
+```
+
+Asegúrate de que el backend esté corriendo para que funciones como login, citas y demás operaciones.
+
+## Estructura general
+
+- `src/components` → componentes reutilizables.
+- `src/pages` → vistas principales de la app.
+- `src/services` → integración con la API.
+- `src/contexts` → contextos globales como autenticación.
