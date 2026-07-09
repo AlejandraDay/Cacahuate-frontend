@@ -1,23 +1,32 @@
 import React, { createContext, useState, useEffect } from 'react';
-import Cookies from 'js-cookie';
 import { authService } from '../services/auth';
 import type { AuthContextType, User, RegisterRequest } from '../types';
 
-const decodeJwtId = (token: string): string => {
+const decodeJwtPayload = (token: string): Record<string, unknown> => {
   try {
-    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4)
-    const payload = JSON.parse(atob(padded))
-    return (
-      payload.sub ||
-      payload.nameid ||
-      payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
-      ''
-    )
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
   } catch {
-    return ''
+    return {};
   }
-}
+};
+
+const extractUserId = (token: string): string => {
+  const payload = decodeJwtPayload(token);
+  return (
+    (payload.sub as string) ||
+    (payload.nameid as string) ||
+    (payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as string) ||
+    ''
+  );
+};
+
+const isTokenExpired = (token: string): boolean => {
+  const { exp } = decodeJwtPayload(token);
+  if (!exp) return true;
+  return (exp as number) * 1000 < Date.now();
+};
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -27,20 +36,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
+    const refreshToken = localStorage.getItem('refreshToken');
     const userData = localStorage.getItem('userData');
+
     if (token && userData) {
+      // If token is expired and there's no refresh token, don't restore the session
+      if (isTokenExpired(token) && !refreshToken) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const parsed: User = JSON.parse(userData)
+        const parsed: User = JSON.parse(userData);
         if (!parsed.id) {
-          parsed.id = decodeJwtId(token)
-          localStorage.setItem('userData', JSON.stringify(parsed))
+          parsed.id = extractUserId(token);
+          localStorage.setItem('userData', JSON.stringify(parsed));
         }
-        setUser(parsed)
+        setUser(parsed);
       } catch {
         localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('userData');
       }
     }
+
     setIsLoading(false);
   }, []);
 
@@ -49,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.login({ email, password });
       const userData: User = {
-        id: decodeJwtId(response.token),
+        id: extractUserId(response.token),
         firstName: response.fullName.split(' ')[0],
         lastName: response.fullName.split(' ')[1] || '',
         email: response.email,
@@ -57,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       localStorage.setItem('authToken', response.token);
+      localStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('userData', JSON.stringify(userData));
       setUser(userData);
     } finally {
@@ -69,26 +91,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.register(data);
       const userData: User = {
-        id: decodeJwtId(response.token),
+        id: extractUserId(response.token),
         firstName: data.firstName,
         lastName: data.lastName,
         email: response.email,
         role: response.role,
       };
       localStorage.setItem('authToken', response.token);
+      localStorage.setItem('refreshToken', response.refreshToken);
       localStorage.setItem('userData', JSON.stringify(userData));
-      
       setUser(userData);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      try {
+        await authService.logout(refreshToken);
+      } catch {
+        // Ignore — still clear local state
+      }
+    }
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userData');
-    Cookies.remove('authToken');
-    Cookies.remove('userData');
     setUser(null);
   };
 

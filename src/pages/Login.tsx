@@ -25,6 +25,8 @@ interface PortalConfig {
   titleColor: string;
   canRegister: boolean;
   fixedRole?: 'Parent' | 'Therapist';
+  requiredRole: 'Parent' | 'Therapist' | 'Admin';
+  roleLabel: string;
 }
 
 const configs: Record<PortalSlug, PortalConfig> = {
@@ -48,6 +50,8 @@ const configs: Record<PortalSlug, PortalConfig> = {
     titleColor: 'text-green-900',
     canRegister: true,
     fixedRole: 'Parent',
+    requiredRole: 'Parent',
+    roleLabel: 'padres',
   },
   therapists: {
     title: 'Portal de Terapeutas',
@@ -69,6 +73,8 @@ const configs: Record<PortalSlug, PortalConfig> = {
     titleColor: 'text-purple-900',
     canRegister: true,
     fixedRole: 'Therapist',
+    requiredRole: 'Therapist',
+    roleLabel: 'terapeutas',
   },
   admin: {
     title: 'Panel de Administración',
@@ -89,6 +95,8 @@ const configs: Record<PortalSlug, PortalConfig> = {
     logoGradTo: '#334155',
     titleColor: 'text-slate-800',
     canRegister: false,
+    requiredRole: 'Admin',
+    roleLabel: 'administradores',
   },
 };
 
@@ -125,7 +133,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login, register, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,6 +143,12 @@ const Login: React.FC = () => {
     try {
       if (isLogin) {
         await login(email, password);
+        const userData = JSON.parse(localStorage.getItem('userData') ?? '{}');
+        if (userData.role !== cfg.requiredRole) {
+          await logout();
+          setError(`Este portal es exclusivo para ${cfg.roleLabel}.`);
+          return;
+        }
       } else {
         await register({
           firstName,

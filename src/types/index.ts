@@ -15,9 +15,12 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
   email: string;
   fullName: string;
   role: UserRole;
+  expiresAt: string;
+  refreshTokenExpiresAt: string;
 }
 
 export interface RegisterRequest {
@@ -34,7 +37,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 export interface TimeSlot {
