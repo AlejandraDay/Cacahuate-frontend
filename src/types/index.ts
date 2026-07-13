@@ -120,6 +120,10 @@ export interface Appointment {
   progressUpdatedAt?: string;
   enRouteAt?: string;
   inProgressAt?: string;
+  parentSignature?: string;
+  parentSignedAt?: string;
+  therapistSignature?: string;
+  therapistSignedAt?: string;
   isRated?: boolean;
   ratingStars?: number;
   formSubmissionId?: string;

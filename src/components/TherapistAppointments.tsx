@@ -14,6 +14,7 @@ import {
   MapPinIcon,
   PlayCircleIcon,
   XMarkIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../hooks/useAuth'
 import { schedulingService } from '../services/scheduling'
@@ -23,6 +24,7 @@ import { FIELD_TYPE_LABELS } from '../types'
 import TherapistAvailability from './TherapistAvailability'
 import ConfirmDialog from './ConfirmDialog'
 import ProgressNotesModal from './ProgressNotesModal'
+import SignatureModal from './SignatureModal'
 
 // ── Field renderer ─────────────────────────────────────────────────────────────
 const FieldInput: React.FC<{
@@ -248,6 +250,7 @@ const TherapistAppointments: React.FC = () => {
   const [formTarget, setFormTarget] = useState<Appointment | null>(null)
   const [savingProgress, setSavingProgress] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [signTarget, setSignTarget] = useState<Appointment | null>(null)
   const prevApptCount = useRef<number | null>(null)
 
   useEffect(() => {
@@ -345,6 +348,11 @@ const TherapistAppointments: React.FC = () => {
     } finally {
       setSavingProgress(false)
     }
+  }
+
+  const handleSignAppointment = async (appointmentId: string, signature: string) => {
+    const updated = await schedulingService.signAppointment(appointmentId, signature)
+    setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
   }
 
   const toLocalDate = (dateStr: string) => {
@@ -637,11 +645,12 @@ const TherapistAppointments: React.FC = () => {
           {/* Desktop table */}
           <div className="hidden lg:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Table header */}
-          <div className="hidden lg:grid bg-gray-50 border-b border-gray-100 px-6 py-5 grid-cols-5 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
+          <div className="hidden lg:grid bg-gray-50 border-b border-gray-100 px-6 py-5 grid-cols-6 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
             <div>Paciente</div>
             <div>Fecha y Hora</div>
             <div>Duración</div>
             <div>Notas</div>
+            <div>Calificación</div>
             <div></div>
           </div>
 
@@ -660,7 +669,7 @@ const TherapistAppointments: React.FC = () => {
               return (
                 <div
                   key={apt.id}
-                  className="hidden lg:grid px-6 py-5 grid-cols-5 gap-4 items-center hover:bg-gray-50 transition-colors"
+                  className="hidden lg:grid px-6 py-5 grid-cols-6 gap-4 items-center hover:bg-gray-50 transition-colors"
                 >
                   {/* Paciente */}
                   <div className="flex items-center gap-3">
@@ -691,6 +700,17 @@ const TherapistAppointments: React.FC = () => {
                       <span className="inline-flex px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-xs font-medium">
                         {apt.notes}
                       </span>
+                    )}
+                  </div>
+
+                  {/* Calificación del padre */}
+                  <div>
+                    {apt.ratingStars != null ? (
+                      <span className="inline-flex items-center gap-1 text-amber-500 text-xs font-semibold">
+                        {'★'.repeat(apt.ratingStars)}{'☆'.repeat(5 - apt.ratingStars)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
                     )}
                   </div>
 
@@ -763,6 +783,22 @@ const TherapistAppointments: React.FC = () => {
                         >
                           <CheckBadgeIcon className="w-5 h-5" />
                         </button>
+                        {apt.therapistSignature ? (
+                          <span
+                            className="p-2 text-emerald-500"
+                            title={`Firmado el ${apt.therapistSignedAt ? new Date(apt.therapistSignedAt).toLocaleDateString('es-ES') : ''}`}
+                          >
+                            <CheckCircleIcon className="w-5 h-5" />
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setSignTarget(apt)}
+                            className="p-2 hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors"
+                            title="Firmar constancia de cita"
+                          >
+                            <PencilSquareIcon className="w-5 h-5" />
+                          </button>
+                        )}
                       </>
                     )}
                     <button className="p-2 hover:bg-gray-100 text-gray-400 hover:text-gray-600 rounded-lg transition-colors">
@@ -808,6 +844,15 @@ const TherapistAppointments: React.FC = () => {
         onSave={handleSaveProgress}
         onClose={() => setProgressTarget(null)}
       />
+
+      {signTarget && (
+        <SignatureModal
+          appointmentId={signTarget.id}
+          userName={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`}
+          onSubmit={handleSignAppointment}
+          onClose={() => setSignTarget(null)}
+        />
+      )}
     </div>
   )
 }

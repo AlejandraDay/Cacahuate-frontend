@@ -20,6 +20,7 @@ import {
   ClipboardDocumentListIcon,
   MapPinIcon,
   PlayCircleIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { schedulingService } from '../services/scheduling'
@@ -30,6 +31,8 @@ import ConfirmDialog from './ConfirmDialog'
 import RateTherapistModal from './RateTherapistModal'
 import ProgressViewModal from './ProgressViewModal'
 import FormSubmissionModal from './FormSubmissionModal'
+import SignatureModal from './SignatureModal'
+import { useAuth } from '../hooks/useAuth'
 
 const toLocalDateStr = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -66,6 +69,7 @@ const statusLabel = (status: unknown): string => {
 }
 
 const ParentAppointments: React.FC = () => {
+  const { user } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [therapists, setTherapists] = useState<Therapist[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
@@ -82,6 +86,7 @@ const ParentAppointments: React.FC = () => {
   const [rateTarget, setRateTarget] = useState<Appointment | null>(null)
   const [ratingLoading, setRatingLoading] = useState(false)
   const [progressView, setProgressView] = useState<Appointment | null>(null)
+  const [signTarget, setSignTarget] = useState<Appointment | null>(null)
 
   const [selectedPatient, setSelectedPatient] = useState<string | undefined>()
   const [selectedTherapist, setSelectedTherapist] = useState<string | undefined>()
@@ -205,6 +210,13 @@ const ParentAppointments: React.FC = () => {
     } finally {
       setRatingLoading(false)
     }
+  }
+
+  const handleSignAppointment = async (appointmentId: string, signature: string) => {
+    const updated = await schedulingService.signAppointment(appointmentId, signature)
+    setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+    setSuccess('Cita firmada correctamente')
+    setTimeout(() => setSuccess(''), 3000)
   }
 
   const handleOpenSubmission = async (appointment: Appointment) => {
@@ -443,6 +455,22 @@ const ParentAppointments: React.FC = () => {
                         >
                           <StarIcon className="w-4 h-4" />
                           Calificar terapeuta
+                        </button>
+                      )}
+                      {apt.parentSignature ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold" title={`Firmado el ${apt.parentSignedAt ? new Date(apt.parentSignedAt).toLocaleDateString('es-ES') : ''}`}>
+                          <CheckCircleIcon className="w-3.5 h-3.5" />
+                          Firmada
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setSignTarget(apt)}
+                          disabled={loading}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold transition-colors"
+                          title="Firmar constancia de cita"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                          Firmar
                         </button>
                       )}
                     </div>
@@ -726,6 +754,15 @@ const ParentAppointments: React.FC = () => {
           setSubmissionError('')
         }}
       />
+
+      {signTarget && (
+        <SignatureModal
+          appointmentId={signTarget.id}
+          userName={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`}
+          onSubmit={handleSignAppointment}
+          onClose={() => setSignTarget(null)}
+        />
+      )}
     </div>
   )
 }

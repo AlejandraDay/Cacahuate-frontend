@@ -153,4 +153,12 @@ export const schedulingService = {
     const response = await apiClient.get<TherapistRating[]>('/scheduling/ratings/my');
     return response.data;
   },
+
+  async signAppointment(appointmentId: string, signature: string): Promise<Appointment> {
+    const response = await apiClient.post<Appointment>(
+      `/scheduling/appointments/${appointmentId}/sign`,
+      { signature }
+    );
+    return response.data;
+  },
 };
