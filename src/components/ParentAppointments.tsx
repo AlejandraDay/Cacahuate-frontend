@@ -32,6 +32,7 @@ import RateTherapistModal from './RateTherapistModal'
 import ProgressViewModal from './ProgressViewModal'
 import FormSubmissionModal from './FormSubmissionModal'
 import SignatureModal from './SignatureModal'
+import ReportsMenu from './ReportsMenu'
 import { useAuth } from '../hooks/useAuth'
 
 const toLocalDateStr = (date: Date) =>
@@ -80,6 +81,7 @@ const ParentAppointments: React.FC = () => {
   const [filter, setFilter] = useState('upcoming')
   const [activeTab, setActiveTab] = useState('appointments')
   const [submissionView, setSubmissionView] = useState<FormSubmissionResult | null>(null)
+  const [submissionPatientName, setSubmissionPatientName] = useState('')
   const [submissionLoading, setSubmissionLoading] = useState(false)
   const [submissionError, setSubmissionError] = useState('')
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
@@ -219,12 +221,12 @@ const ParentAppointments: React.FC = () => {
     setTimeout(() => setSuccess(''), 3000)
   }
 
-  const handleOpenSubmission = async (appointment: Appointment) => {
-    if (!appointment.formSubmissionId) return
+  const handleOpenSubmission = async (appointment: Appointment, submissionId: string) => {
     try {
       setSubmissionLoading(true)
       setSubmissionError('')
-      const submission = await formsService.getSubmission(appointment.formSubmissionId)
+      setSubmissionPatientName(appointment.patientName ?? '')
+      const submission = await formsService.getSubmission(submissionId)
       setSubmissionView(submission)
     } catch (err) {
       setSubmissionError(err instanceof Error ? err.message : 'No se pudo cargar el informe')
@@ -424,15 +426,12 @@ const ParentAppointments: React.FC = () => {
                   )}
                   {statusStr(apt.status) === 'completed' && (
                     <div className="flex flex-wrap gap-2">
-                      {apt.formSubmissionId ? (
-                        <button
-                          onClick={() => handleOpenSubmission(apt)}
+                      {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 ? (
+                        <ReportsMenu
+                          submissionIds={apt.formSubmissionIds}
                           disabled={submissionLoading}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
-                        >
-                          <ClipboardDocumentListIcon className="w-4 h-4" />
-                          Ver informe
-                        </button>
+                          onSelect={(submissionId) => handleOpenSubmission(apt, submissionId)}
+                        />
                       ) : (
                         <button
                           onClick={() => setProgressView(apt)}
@@ -749,6 +748,7 @@ const ParentAppointments: React.FC = () => {
         submission={submissionView}
         loading={submissionLoading}
         error={submissionError}
+        patientName={submissionPatientName}
         onClose={() => {
           setSubmissionView(null)
           setSubmissionError('')

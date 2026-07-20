@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { FormTemplate, FormAssignment, FormField, AppointmentFormInfo, FormSubmissionResult } from '../types';
+import type { FormTemplate, FormAssignment, FormField, AppointmentFormInfo, FormSubmissionResult, PagedResult } from '../types';
 
 interface CreateFormTemplatePayload {
   name: string;
@@ -39,14 +39,22 @@ export const formsService = {
     return response.data;
   },
 
-  async getAllAssignments(): Promise<FormAssignment[]> {
-    const response = await apiClient.get<FormAssignment[]>('/forms/assignments');
+  async getAllAssignments(page = 1, pageSize = 20, patientId?: string): Promise<PagedResult<FormAssignment>> {
+    const response = await apiClient.get<PagedResult<FormAssignment>>('/forms/assignments', {
+      params: { page, pageSize, patientId },
+    });
     return response.data;
   },
 
-  // Therapist — per appointment
-  async getFormForAppointment(appointmentId: string): Promise<AppointmentFormInfo> {
-    const response = await apiClient.get<AppointmentFormInfo>(`/forms/for-appointment/${appointmentId}`);
+  // Therapist — formularios de sus pacientes asignados
+  async getMyAssignments(): Promise<FormAssignment[]> {
+    const response = await apiClient.get<FormAssignment[]>('/forms/assignments/my');
+    return response.data;
+  },
+
+  // Therapist — per appointment (puede haber varios formularios asignados al paciente)
+  async getFormsForAppointment(appointmentId: string): Promise<AppointmentFormInfo[]> {
+    const response = await apiClient.get<AppointmentFormInfo[]>(`/forms/for-appointment/${appointmentId}`);
     return response.data;
   },
 

@@ -17,13 +17,16 @@ import {
   StarIcon,
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { schedulingService } from '../services/scheduling'
 import { formsService } from '../services/forms'
-import type { Appointment, FormSubmissionResult } from '../types'
+import type { Appointment, FormSubmissionResult, Patient, Therapist } from '../types'
 import ConfirmDialog from './ConfirmDialog'
 import ProgressViewModal from './ProgressViewModal'
 import FormSubmissionModal from './FormSubmissionModal'
+import ReportsMenu from './ReportsMenu'
+import Pager from './Pager'
 
 const toLocalDate = (dateStr: string) => {
   const [y, m, d] = dateStr.split('T')[0].split('-').map(Number)
@@ -47,6 +50,27 @@ const statusLabel = (status: unknown): string => {
   return String(status ?? '')
 }
 
+const renderSignatures = (apt: Appointment) => (
+  <div className="flex items-center gap-1.5">
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold ${
+        apt.therapistSignature ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'
+      }`}
+      title={apt.therapistSignature ? `Firmado el ${apt.therapistSignedAt ? new Date(apt.therapistSignedAt).toLocaleDateString('es-ES') : ''}` : 'El terapeuta aún no ha firmado'}
+    >
+      Terapeuta {apt.therapistSignature ? '✓' : '—'}
+    </span>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold ${
+        apt.parentSignature ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'
+      }`}
+      title={apt.parentSignature ? `Firmado el ${apt.parentSignedAt ? new Date(apt.parentSignedAt).toLocaleDateString('es-ES') : ''}` : 'El tutor aún no ha firmado'}
+    >
+      Tutor {apt.parentSignature ? '✓' : '—'}
+    </span>
+  </div>
+)
+
 const renderRatingStars = (stars?: number) => {
   const count = Math.max(0, Math.min(5, stars ?? 0))
   return (
@@ -64,10 +88,18 @@ const renderRatingStars = (stars?: number) => {
 
 const AdminAppointments: React.FC = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'pending' | 'reports'>('pending')
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([])
-  const [allAppointments, setAllAppointments] = useState<Appointment[]>([])
+  const [reports, setReports] = useState<Appointment[]>([])
+  const [reportsPage, setReportsPage] = useState(1)
+  const [reportsTotalCount, setReportsTotalCount] = useState(0)
+  const [reportsTotalPages, setReportsTotalPages] = useState(0)
+  const [overallTotalCount, setOverallTotalCount] = useState(0)
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [therapists, setTherapists] = useState<Therapist[]>([])
   const [loading, setLoading] = useState(false)
+  const [reportsLoading, setReportsLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -83,18 +115,21 @@ const AdminAppointments: React.FC = () => {
   const [dateTo, setDateTo] = useState('')
 
   useEffect(() => {
-    loadAppointments()
+    loadPending()
+    loadLookups()
+    loadOverallCount()
   }, [])
 
-  const loadAppointments = async () => {
+  useEffect(() => {
+    loadReports()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportsPage, patientFilter, therapistFilter, dateFrom, dateTo])
+
+  const loadPending = async () => {
     try {
       setLoading(true)
-      const [pending, all] = await Promise.all([
-        schedulingService.getAllPendingAppointments(),
-        schedulingService.getAllAppointments(),
-      ])
+      const pending = await schedulingService.getAllPendingAppointments()
       setPendingAppointments(pending)
-      setAllAppointments(all)
       setError('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando citas')
@@ -104,33 +139,63 @@ const AdminAppointments: React.FC = () => {
     }
   }
 
-  const uniquePatients = Array.from(
-    new Map(allAppointments.map((a) => [a.patientId, a.patientName || a.patientId])).entries()
-  )
-  const uniqueTherapists = Array.from(
-    new Map(allAppointments.map((a) => [a.therapistId, a.therapistName || a.therapistId])).entries()
-  )
+  const loadLookups = async () => {
+    try {
+      const [pts, ths] = await Promise.all([
+        schedulingService.getPatientsLookup(),
+        schedulingService.getTherapists(),
+      ])
+      setPatients(pts)
+      setTherapists(ths)
+    } catch {
+      // los dropdowns de filtro no son críticos
+    }
+  }
 
-  const filteredReports = allAppointments
-    .filter((apt) => patientFilter === 'all' || apt.patientId === patientFilter)
-    .filter((apt) => therapistFilter === 'all' || apt.therapistId === therapistFilter)
-    .filter((apt) => !dateFrom || apt.date.split('T')[0] >= dateFrom)
-    .filter((apt) => !dateTo || apt.date.split('T')[0] <= dateTo)
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  const loadOverallCount = async () => {
+    try {
+      const result = await schedulingService.getAllAppointments({ page: 1, pageSize: 1 })
+      setOverallTotalCount(result.totalCount)
+    } catch {
+      // stat no crítica
+    }
+  }
+
+  const loadReports = async () => {
+    try {
+      setReportsLoading(true)
+      const result = await schedulingService.getAllAppointments({
+        page: reportsPage,
+        pageSize: 20,
+        patientId: patientFilter !== 'all' ? patientFilter : undefined,
+        therapistId: therapistFilter !== 'all' ? therapistFilter : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+      setReports(result.items)
+      setReportsTotalCount(result.totalCount)
+      setReportsTotalPages(result.totalPages)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando reportes')
+      setReports([])
+    } finally {
+      setReportsLoading(false)
+    }
+  }
 
   const resetFilters = () => {
     setPatientFilter('all')
     setTherapistFilter('all')
     setDateFrom('')
     setDateTo('')
+    setReportsPage(1)
   }
 
-  const handleOpenSubmission = async (appointment: Appointment) => {
-    if (!appointment.formSubmissionId) return
+  const handleOpenSubmission = async (submissionId: string) => {
     try {
       setSubmissionLoading(true)
       setSubmissionError('')
-      const submission = await formsService.getSubmission(appointment.formSubmissionId)
+      const submission = await formsService.getSubmission(submissionId)
       setSubmissionView(submission)
     } catch (err) {
       setSubmissionError(err instanceof Error ? err.message : 'No se pudo cargar el informe')
@@ -146,7 +211,8 @@ const AdminAppointments: React.FC = () => {
       await schedulingService.confirmAppointment(id)
       setSuccess('Cita aprobada exitosamente')
       setTimeout(() => setSuccess(''), 3000)
-      loadAppointments()
+      loadPending()
+      loadReports()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al aprobar la cita')
     } finally {
@@ -160,7 +226,8 @@ const AdminAppointments: React.FC = () => {
       await schedulingService.rejectAppointment(id)
       setSuccess('Cita rechazada')
       setTimeout(() => setSuccess(''), 3000)
-      loadAppointments()
+      loadPending()
+      loadReports()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al rechazar la cita')
     } finally {
@@ -202,7 +269,7 @@ const AdminAppointments: React.FC = () => {
               <CalendarDaysIcon className="w-4 h-4 text-blue-500" />
             </div>
           </div>
-          <p className="text-3xl sm:text-4xl font-black text-gray-900">{allAppointments.length}</p>
+          <p className="text-3xl sm:text-4xl font-black text-gray-900">{overallTotalCount}</p>
           <p className="text-gray-400 text-xs mt-1">citas en el sistema</p>
         </div>
       </div>
@@ -351,12 +418,12 @@ const AdminAppointments: React.FC = () => {
               <label className="block text-xs font-semibold text-gray-500 mb-1">Paciente</label>
               <select
                 value={patientFilter}
-                onChange={(e) => setPatientFilter(e.target.value)}
+                onChange={(e) => { setPatientFilter(e.target.value); setReportsPage(1) }}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="all">Todos</option>
-                {uniquePatients.map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
+                {patients.map((p) => (
+                  <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
                 ))}
               </select>
             </div>
@@ -364,12 +431,12 @@ const AdminAppointments: React.FC = () => {
               <label className="block text-xs font-semibold text-gray-500 mb-1">Terapeuta</label>
               <select
                 value={therapistFilter}
-                onChange={(e) => setTherapistFilter(e.target.value)}
+                onChange={(e) => { setTherapistFilter(e.target.value); setReportsPage(1) }}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="all">Todos</option>
-                {uniqueTherapists.map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
+                {therapists.map((t) => (
+                  <option key={t.id} value={t.id}>{t.fullName}</option>
                 ))}
               </select>
             </div>
@@ -378,7 +445,7 @@ const AdminAppointments: React.FC = () => {
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => { setDateFrom(e.target.value); setReportsPage(1) }}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
@@ -387,7 +454,7 @@ const AdminAppointments: React.FC = () => {
               <input
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => { setDateTo(e.target.value); setReportsPage(1) }}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
@@ -403,19 +470,24 @@ const AdminAppointments: React.FC = () => {
         </div>
 
         {/* Reports table */}
-        {loading ? (
+        {reportsLoading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-100 border-t-blue-500" />
             <p className="text-gray-400 text-sm">Cargando...</p>
           </div>
-        ) : filteredReports.length > 0 ? (
+        ) : reports.length > 0 ? (
           <>
             {/* Mobile cards */}
             <div className="lg:hidden space-y-3">
-              {filteredReports.map((apt) => (
+              {reports.map((apt) => (
                 <div key={apt.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-gray-900 text-sm">{apt.patientName || apt.patientId}</p>
+                    <button
+                      onClick={() => navigate(`/admin/patients/${apt.patientId}`)}
+                      className="font-semibold text-gray-900 text-sm hover:text-blue-600 hover:underline transition-colors text-left"
+                    >
+                      {apt.patientName || apt.patientId}
+                    </button>
                     <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold border ${
                       statusStr(apt.status) === 'completed'  ? 'bg-blue-50 text-blue-700 border-blue-100' :
                       statusStr(apt.status) === 'confirmed'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
@@ -430,37 +502,56 @@ const AdminAppointments: React.FC = () => {
                   <p className="text-xs text-gray-500 mb-1">
                     {toLocalDate(apt.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })} · {apt.startTime}
                   </p>
-                  <p className="text-xs text-gray-500 mb-3 flex items-center gap-1">
+                  <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
                     {apt.ratingStars != null ? renderRatingStars(apt.ratingStars) : 'Sin calificación'}
                   </p>
-                  <button
-                    onClick={() => handleOpenSubmission(apt)}
-                    disabled={!apt.formSubmissionId}
-                    className={`w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors ${apt.formSubmissionId ? 'bg-blue-50 hover:bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                  >
-                    <ClipboardDocumentListIcon className="w-4 h-4" />
-                    {apt.formSubmissionId ? 'Ver informe' : 'Sin informe'}
-                  </button>
+                  <div className="mb-3">{renderSignatures(apt)}</div>
+                  {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 ? (
+                    <ReportsMenu
+                      submissionIds={apt.formSubmissionIds}
+                      onSelect={handleOpenSubmission}
+                      className="w-full justify-center"
+                    />
+                  ) : (
+                    <button
+                      disabled
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                    >
+                      <ClipboardDocumentListIcon className="w-4 h-4" />
+                      Sin informe
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
 
             {/* Desktop table */}
             <div className="hidden lg:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-7 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
+              <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-8 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
                 <div>Paciente</div>
                 <div>Terapeuta</div>
                 <div>Fecha</div>
                 <div>Hora</div>
                 <div>Calificación</div>
+                <div>Firmas</div>
                 <div>Estado</div>
                 <div className="text-right">Reporte</div>
               </div>
               <div className="divide-y divide-gray-100">
-                {filteredReports.map((apt) => (
-                  <div key={apt.id} className="grid px-6 py-4 grid-cols-7 gap-4 items-center hover:bg-gray-50 transition-colors">
-                    <p className="font-semibold text-gray-900 text-sm">{apt.patientName || apt.patientId}</p>
-                    <p className="text-sm text-gray-600">{apt.therapistName || apt.therapistId}</p>
+                {reports.map((apt) => (
+                  <div key={apt.id} className="grid px-6 py-4 grid-cols-8 gap-4 items-center hover:bg-gray-50 transition-colors">
+                    <button
+                      onClick={() => navigate(`/admin/patients/${apt.patientId}`)}
+                      className="font-semibold text-gray-900 text-sm hover:text-blue-600 hover:underline transition-colors text-left"
+                    >
+                      {apt.patientName || apt.patientId}
+                    </button>
+                    <button
+                      onClick={() => navigate(`/admin/therapists/${apt.therapistId}`)}
+                      className="text-sm text-gray-600 hover:text-blue-600 hover:underline transition-colors text-left"
+                    >
+                      {apt.therapistName || apt.therapistId}
+                    </button>
                     <p className="text-sm text-gray-600">
                       {toLocalDate(apt.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })}
                     </p>
@@ -468,6 +559,7 @@ const AdminAppointments: React.FC = () => {
                     <p className="text-sm text-gray-600 flex items-center gap-1">
                       {apt.ratingStars != null ? renderRatingStars(apt.ratingStars) : 'Sin calificación'}
                     </p>
+                    {renderSignatures(apt)}
                     <span className={`w-fit inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                       statusStr(apt.status) === 'completed'  ? 'bg-blue-50 text-blue-700 border-blue-100' :
                       statusStr(apt.status) === 'confirmed'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
@@ -478,20 +570,25 @@ const AdminAppointments: React.FC = () => {
                     }`}>
                       {statusLabel(apt.status)}
                     </span>
-                    <div className="text-right">
-                      <button
-                        onClick={() => handleOpenSubmission(apt)}
-                        disabled={!apt.formSubmissionId}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${apt.formSubmissionId ? 'bg-blue-50 hover:bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                      >
-                        <ClipboardDocumentListIcon className="w-4 h-4" />
-                        {apt.formSubmissionId ? 'Ver informe' : 'Sin informe'}
-                      </button>
+                    <div className="text-right flex flex-col gap-1.5 items-end">
+                      {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 ? (
+                        <ReportsMenu submissionIds={apt.formSubmissionIds} onSelect={handleOpenSubmission} />
+                      ) : (
+                        <button
+                          disabled
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
+                        >
+                          <ClipboardDocumentListIcon className="w-4 h-4" />
+                          Sin informe
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            <Pager page={reportsPage} totalPages={reportsTotalPages} totalCount={reportsTotalCount} onPageChange={setReportsPage} />
           </>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-3xl border border-gray-100">

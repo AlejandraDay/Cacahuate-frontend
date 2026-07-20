@@ -76,47 +76,58 @@ const FieldInput: React.FC<{
 }
 
 // ── Appointment Form Modal ─────────────────────────────────────────────────────
+const isHiddenPatientNameField = (field: FormField) => {
+  const normalizedLabel = field.label.trim().toLowerCase().replace(/\s+/g, ' ')
+  return [
+    'name',
+    'nombre',
+    'patient name',
+    'nombre del paciente',
+    'full name',
+    'nombre completo',
+  ].includes(normalizedLabel)
+}
+
 const AppointmentFormModal: React.FC<{
   appointment: Appointment;
   onClose: () => void;
 }> = ({ appointment, onClose }) => {
-  const [formInfo, setFormInfo] = useState<AppointmentFormInfo | null>(null)
+  const [forms, setForms] = useState<AppointmentFormInfo[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answersByAssignment, setAnswersByAssignment] = useState<Record<string, Record<string, string>>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    formsService.getFormForAppointment(appointment.id)
-      .then(info => { setFormInfo(info); setLoading(false) })
+    formsService.getFormsForAppointment(appointment.id)
+      .then(info => {
+        setForms(info)
+        setSelectedId(info[0]?.assignmentId ?? null)
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [appointment.id])
 
-  const setAnswer = (fieldId: string, value: string) =>
-    setAnswers(prev => ({ ...prev, [fieldId]: value }))
+  const selectedForm = forms.find(f => f.assignmentId === selectedId) ?? null
 
-  const isHiddenPatientNameField = (field: FormField) => {
-    const normalizedLabel = field.label.trim().toLowerCase().replace(/\s+/g, ' ')
-    return [
-      'name',
-      'nombre',
-      'patient name',
-      'nombre del paciente',
-      'full name',
-      'nombre completo',
-    ].includes(normalizedLabel)
-  }
+  const setAnswer = (assignmentId: string, fieldId: string, value: string) =>
+    setAnswersByAssignment(prev => ({
+      ...prev,
+      [assignmentId]: { ...prev[assignmentId], [fieldId]: value },
+    }))
 
-  const visibleFields = formInfo?.fields?.filter(field => !isHiddenPatientNameField(field)) ?? []
-  const hiddenNameFields = formInfo?.fields?.filter(isHiddenPatientNameField) ?? []
+  const visibleFields = selectedForm?.fields.filter(field => !isHiddenPatientNameField(field)) ?? []
+  const hiddenNameFields = selectedForm?.fields.filter(isHiddenPatientNameField) ?? []
+  const answers = (selectedForm && answersByAssignment[selectedForm.assignmentId]) ?? {}
 
   const canSubmit = visibleFields
     .filter(f => f.isRequired)
-    .every(f => (answers[f.id] ?? '').trim() !== '') ?? false
+    .every(f => (answers[f.id] ?? '').trim() !== '')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formInfo?.assignmentId) return
+    if (!selectedForm) return
     setError('')
     setSubmitting(true)
     try {
@@ -130,10 +141,10 @@ const AppointmentFormModal: React.FC<{
         value: appointment.patientName ?? '',
       }))
 
-      const result = await formsService.submitForm(appointment.id, formInfo.assignmentId, {
+      const result = await formsService.submitForm(appointment.id, selectedForm.assignmentId, {
         answers: [...visibleAnswers, ...hiddenAnswers],
       })
-      setFormInfo(result)
+      setForms(prev => prev.map(f => (f.assignmentId === result.assignmentId ? result : f)))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al enviar')
     } finally {
@@ -143,87 +154,108 @@ const AppointmentFormModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl my-8">
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-          <div>
-            <h3 className="text-lg font-extrabold text-gray-900">
-              {loading ? 'Cargando...' : formInfo?.formTemplateName ?? 'Formulario de sesión'}
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5">{appointment.patientName}</p>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl my-8 flex flex-col sm:flex-row overflow-hidden">
+        {forms.length > 1 && (
+          <div className="sm:w-52 shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100 bg-gray-50 p-3 space-y-1">
+            {forms.map(f => (
+              <button
+                key={f.assignmentId}
+                onClick={() => setSelectedId(f.assignmentId)}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 transition ${
+                  selectedId === f.assignmentId ? 'bg-white shadow-sm text-violet-700' : 'text-gray-600 hover:bg-white/60'
+                }`}
+              >
+                <span className="truncate">{f.formTemplateName}</span>
+                {f.isSubmitted
+                  ? <CheckCircleIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+                  : <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />}
+              </button>
+            ))}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        </div>
+        )}
 
-        <div className="p-6">
-          {loading && (
-            <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Cargando formulario...</div>
-          )}
-
-          {!loading && !formInfo?.hasForm && (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <ClipboardDocumentListIcon className="w-12 h-12 mb-3" />
-              <p className="text-sm font-medium text-gray-500">No hay formulario asignado para este paciente</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+            <div>
+              <h3 className="text-lg font-extrabold text-gray-900">
+                {loading ? 'Cargando...' : selectedForm?.formTemplateName ?? 'Formulario de sesión'}
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">{appointment.patientName}</p>
             </div>
-          )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
 
-          {!loading && formInfo?.hasForm && formInfo.isSubmitted && formInfo.submission && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl">
-                <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
-                <p className="text-xs text-emerald-700 font-semibold">
-                  Completado por {formInfo.submission.therapistName} · {new Date(formInfo.submission.submittedAt).toLocaleDateString('es-MX')}
-                </p>
+          <div className="p-6">
+            {loading && (
+              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Cargando formulario...</div>
+            )}
+
+            {!loading && forms.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                <ClipboardDocumentListIcon className="w-12 h-12 mb-3" />
+                <p className="text-sm font-medium text-gray-500">No hay formularios asignados para este paciente</p>
               </div>
-              <div className="space-y-2">
-                {formInfo.submission.answers.map(ans => (
-                  <div key={ans.fieldId} className="flex gap-3 text-sm">
-                    <span className="text-gray-500 font-medium min-w-[150px]">{ans.fieldLabel}:</span>
-                    <span className="text-gray-900">
-                      {ans.fieldType === 4 ? (ans.value === 'true' ? 'Sí' : 'No') : ans.value}
-                    </span>
+            )}
+
+            {!loading && selectedForm?.isSubmitted && selectedForm.submission && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl">
+                  <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
+                  <p className="text-xs text-emerald-700 font-semibold">
+                    Completado por {selectedForm.submission.therapistName} · {new Date(selectedForm.submission.submittedAt).toLocaleDateString('es-MX')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {selectedForm.submission.answers.map(ans => (
+                    <div key={ans.fieldId} className="flex gap-3 text-sm">
+                      <span className="text-gray-500 font-medium min-w-[150px]">{ans.fieldLabel}:</span>
+                      <span className="text-gray-900">
+                        {ans.fieldType === 4 ? (ans.value === 'true' ? 'Sí' : 'No') : ans.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loading && selectedForm && !selectedForm.isSubmitted && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {selectedForm.notes && (
+                  <div className="px-3 py-2 bg-violet-50 rounded-xl text-xs text-violet-700 italic">
+                    Instrucciones: "{selectedForm.notes}"
+                  </div>
+                )}
+                {hiddenNameFields.length > 0 && (
+                  <div className="px-3 py-2 bg-blue-50 rounded-xl text-xs text-blue-700 mb-3">
+                    El nombre del paciente se completará automáticamente desde la cita.
+                  </div>
+                )}
+                {visibleFields.map(field => (
+                  <div key={field.id}>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      {field.label}
+                      {field.isRequired && <span className="text-red-400 ml-1">*</span>}
+                      <span className="ml-2 text-gray-400 font-normal">({FIELD_TYPE_LABELS[field.type]})</span>
+                    </label>
+                    <FieldInput field={field} value={answers[field.id] ?? ''} onChange={v => setAnswer(selectedForm.assignmentId, field.id, v)} />
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {!loading && formInfo?.hasForm && !formInfo.isSubmitted && formInfo.fields && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {formInfo.notes && (
-                <div className="px-3 py-2 bg-violet-50 rounded-xl text-xs text-violet-700 italic">
-                  Instrucciones: "{formInfo.notes}"
+                {error && <p className="text-xs text-red-600 text-center">{error}</p>}
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={submitting || !canSubmit}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow transition"
+                  >
+                    <CheckBadgeIcon className="w-4 h-4" />
+                    {submitting ? 'Enviando...' : 'Enviar informe'}
+                  </button>
                 </div>
-              )}
-              {hiddenNameFields.length > 0 && (
-                <div className="px-3 py-2 bg-blue-50 rounded-xl text-xs text-blue-700 mb-3">
-                  El nombre del paciente se completará automáticamente desde la cita.
-                </div>
-              )}
-              {visibleFields.map(field => (
-                <div key={field.id}>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    {field.label}
-                    {field.isRequired && <span className="text-red-400 ml-1">*</span>}
-                    <span className="ml-2 text-gray-400 font-normal">({FIELD_TYPE_LABELS[field.type]})</span>
-                  </label>
-                  <FieldInput field={field} value={answers[field.id] ?? ''} onChange={v => setAnswer(field.id, v)} />
-                </div>
-              ))}
-              {error && <p className="text-xs text-red-600 text-center">{error}</p>}
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={submitting || !canSubmit}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow transition"
-                >
-                  <CheckBadgeIcon className="w-4 h-4" />
-                  {submitting ? 'Enviando...' : 'Enviar informe'}
-                </button>
-              </div>
-            </form>
-          )}
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -771,10 +803,15 @@ const TherapistAppointments: React.FC = () => {
                       <>
                         <button
                           onClick={() => setFormTarget(apt)}
-                          className="p-2 hover:bg-violet-50 text-gray-400 hover:text-violet-600 rounded-lg transition-colors"
+                          className="relative p-2 hover:bg-violet-50 text-gray-400 hover:text-violet-600 rounded-lg transition-colors"
                           title="Informe de sesión"
                         >
                           <ClipboardDocumentListIcon className="w-5 h-5" />
+                          {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-emerald-500 text-white text-[10px] font-bold rounded-full">
+                              {apt.formSubmissionIds.length}
+                            </span>
+                          )}
                         </button>
                         <button
                           onClick={() => setProgressTarget(apt)}

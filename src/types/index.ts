@@ -1,5 +1,18 @@
 export type UserRole = 'Admin' | 'Therapist' | 'Parent';
 
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface NameLookup {
+  id: string;
+  name: string;
+}
+
 export interface User {
   id: string;
   firstName: string;
@@ -71,6 +84,8 @@ export interface Patient {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  notes?: string;
+  parentName?: string;
 }
 
 export interface Notification {
@@ -126,7 +141,7 @@ export interface Appointment {
   therapistSignedAt?: string;
   isRated?: boolean;
   ratingStars?: number;
-  formSubmissionId?: string;
+  formSubmissionIds?: string[];
   createdAt?: string;
 }
 
@@ -188,12 +203,11 @@ export interface FormAssignment {
 }
 
 export interface AppointmentFormInfo {
-  hasForm: boolean;
-  assignmentId?: string;
-  formTemplateName?: string;
+  assignmentId: string;
+  formTemplateName: string;
   formTemplateDescription?: string;
   notes?: string;
-  fields?: FormField[];
+  fields: FormField[];
   isSubmitted: boolean;
   submission?: FormSubmissionResult;
 }

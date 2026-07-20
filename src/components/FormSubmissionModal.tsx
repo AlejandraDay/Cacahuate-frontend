@@ -1,15 +1,17 @@
 import React from 'react'
-import { XMarkIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, ClipboardDocumentListIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import type { FormSubmissionResult } from '../types'
+import { exportSubmissionToPdf } from '../utils/exportFormPdf'
 
 interface FormSubmissionModalProps {
   submission: FormSubmissionResult | null
   loading: boolean
   error: string
   onClose: () => void
+  patientName?: string
 }
 
-const FormSubmissionModal: React.FC<FormSubmissionModalProps> = ({ submission, loading, error, onClose }) => {
+const FormSubmissionModal: React.FC<FormSubmissionModalProps> = ({ submission, loading, error, onClose, patientName }) => {
   return (
     <div className={`${submission || loading || error ? 'fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4' : 'hidden'}`} onClick={onClose}>
       <div
@@ -26,9 +28,20 @@ const FormSubmissionModal: React.FC<FormSubmissionModalProps> = ({ submission, l
               <p className="text-xs text-gray-500">Detalles del informe de formulario</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg transition-colors">
-            <XMarkIcon className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {submission && (
+              <button
+                onClick={() => exportSubmissionToPdf(submission, patientName)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Exportar PDF
+              </button>
+            )}
+            <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg transition-colors">
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {loading && (

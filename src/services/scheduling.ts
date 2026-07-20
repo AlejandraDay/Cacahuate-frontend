@@ -1,5 +1,15 @@
 import apiClient from './api';
-import type { Therapist, TherapistAvailability, Appointment, Patient, TherapistRating, ProgressData } from '../types';
+import type { Therapist, TherapistAvailability, Appointment, Patient, TherapistRating, ProgressData, PagedResult, NameLookup } from '../types';
+
+export interface AppointmentFilters {
+  page?: number;
+  pageSize?: number;
+  patientId?: string;
+  therapistId?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
 
 export const schedulingService = {
   // Terapeutas
@@ -96,8 +106,20 @@ export const schedulingService = {
     return response.data;
   },
 
-  async getAllAppointments(): Promise<Appointment[]> {
-    const response = await apiClient.get<Appointment[]>('/scheduling/appointments/admin/all');
+  async getAllAppointments(filters: AppointmentFilters = {}): Promise<PagedResult<Appointment>> {
+    const response = await apiClient.get<PagedResult<Appointment>>('/scheduling/appointments/admin/all', {
+      params: { page: 1, pageSize: 20, ...filters },
+    });
+    return response.data;
+  },
+
+  async getTherapistsForPatient(patientId: string): Promise<NameLookup[]> {
+    const response = await apiClient.get<NameLookup[]>(`/scheduling/appointments/patient/${patientId}/therapists`);
+    return response.data;
+  },
+
+  async getPatientsForTherapist(therapistId: string): Promise<NameLookup[]> {
+    const response = await apiClient.get<NameLookup[]>(`/scheduling/appointments/therapist/${therapistId}/patients`);
     return response.data;
   },
 
@@ -116,8 +138,20 @@ export const schedulingService = {
     return response.data;
   },
 
-  async getAllPatients(): Promise<Patient[]> {
-    const response = await apiClient.get<Patient[]>('/scheduling/patients/all');
+  async getAllPatients(page = 1, pageSize = 20, search?: string): Promise<PagedResult<Patient>> {
+    const response = await apiClient.get<PagedResult<Patient>>('/scheduling/patients/all', {
+      params: { page, pageSize, search },
+    });
+    return response.data;
+  },
+
+  async getPatientsLookup(): Promise<Patient[]> {
+    const response = await apiClient.get<Patient[]>('/scheduling/patients/lookup');
+    return response.data;
+  },
+
+  async getPatientById(patientId: string): Promise<Patient> {
+    const response = await apiClient.get<Patient>(`/scheduling/patients/${patientId}`);
     return response.data;
   },
 

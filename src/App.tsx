@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import ParentDashboard from './pages/ParentDashboard';
 import TherapistDashboard from './pages/TherapistDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminPatientDetail from './pages/AdminPatientDetail';
+import AdminTherapistDetail from './pages/AdminTherapistDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/index.css';
 
@@ -45,6 +47,22 @@ function App() {
             element={
               <ProtectedRoute roles={['Admin']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/patients/:patientId"
+            element={
+              <ProtectedRoute roles={['Admin']}>
+                <AdminPatientDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/therapists/:therapistId"
+            element={
+              <ProtectedRoute roles={['Admin']}>
+                <AdminTherapistDetail />
               </ProtectedRoute>
             }
           />

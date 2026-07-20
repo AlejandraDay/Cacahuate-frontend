@@ -4,8 +4,6 @@ import {
   TrashIcon,
   ClipboardDocumentListIcon,
   UserIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   XMarkIcon,
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
@@ -13,6 +11,7 @@ import { formsService } from '../services/forms';
 import { schedulingService } from '../services/scheduling';
 import type { FormTemplate, FormAssignment, Patient, FieldType } from '../types';
 import { FIELD_TYPE_LABELS as LABELS } from '../types';
+import Pager from './Pager';
 
 // ── Field builder row ──────────────────────────────────────────────────────────
 interface DraftField {
@@ -45,13 +44,18 @@ const AdminForms: React.FC = () => {
 
   // Assignments state
   const [assignments, setAssignments] = useState<FormAssignment[]>([]);
+  const [assignmentsPage, setAssignmentsPage] = useState(1);
+  const [assignmentsTotalCount, setAssignmentsTotalCount] = useState(0);
+  const [assignmentsTotalPages, setAssignmentsTotalPages] = useState(0);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selTemplate, setSelTemplate] = useState('');
   const [selPatient, setSelPatient] = useState('');
+  const [selPatientAssignments, setSelPatientAssignments] = useState<FormAssignment[]>([]);
   const [assignNotes, setAssignNotes] = useState('');
   const [assigning, setAssigning] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState('');
 
   const [loading, setLoading] = useState(true);
 
@@ -59,19 +63,41 @@ const AdminForms: React.FC = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    if (tab === 'assignments') loadAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, assignmentsPage]);
+
+  useEffect(() => {
+    if (!selPatient) { setSelPatientAssignments([]); return; }
+    formsService.getAllAssignments(1, 100, selPatient)
+      .then((res) => setSelPatientAssignments(res.items))
+      .catch(() => setSelPatientAssignments([]));
+  }, [selPatient]);
+
   const load = async () => {
     setLoading(true);
     try {
-      const [tpls, asgns, pts] = await Promise.all([
+      const [tpls, pts] = await Promise.all([
         formsService.getTemplates(),
-        formsService.getAllAssignments(),
-        schedulingService.getAllPatients().catch(() => [] as Patient[]),
+        schedulingService.getPatientsLookup().catch(() => [] as Patient[]),
       ]);
       setTemplates(tpls);
-      setAssignments(asgns);
       setPatients(pts);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      const res = await formsService.getAllAssignments(assignmentsPage, 20);
+      setAssignments(res.items);
+      setAssignmentsTotalCount(res.totalCount);
+      setAssignmentsTotalPages(res.totalPages);
+    } finally {
+      setAssignmentsLoading(false);
     }
   };
 
@@ -118,24 +144,46 @@ const AdminForms: React.FC = () => {
 
   // ── Assign handler ─────────────────────────────────────────────────────────
 
+  const assignedTemplateIds = new Set(selPatientAssignments.map((a) => a.formTemplateId));
+
+  const isAlreadyAssigned = selPatient && selTemplate
+    ? assignedTemplateIds.has(selTemplate)
+    : false;
+
   const handleAssign = async () => {
     if (!selTemplate || !selPatient) return;
+    if (assignedTemplateIds.has(selTemplate)) {
+      setAssignError('Este paciente ya tiene esa plantilla asignada.');
+      return;
+    }
+    setAssignError('');
     setAssigning(true);
     try {
-      const a = await formsService.assignTemplate({
+      await formsService.assignTemplate({
         formTemplateId: selTemplate,
         patientId: selPatient,
         notes: assignNotes.trim() || undefined,
       });
-      setAssignments((prev) => [a, ...prev]);
       setShowAssignModal(false);
       setSelTemplate('');
       setSelPatient('');
       setAssignNotes('');
+      setAssignmentsPage(1);
+      loadAssignments();
     } finally {
       setAssigning(false);
     }
   };
+
+  const groupedAssignments = (() => {
+    const map = new Map<string, { patientId: string; patientName: string; items: FormAssignment[] }>();
+    for (const a of assignments) {
+      const existing = map.get(a.patientId);
+      if (existing) existing.items.push(a);
+      else map.set(a.patientId, { patientId: a.patientId, patientName: a.patientName, items: [a] });
+    }
+    return Array.from(map.values());
+  })();
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -189,7 +237,7 @@ const AdminForms: React.FC = () => {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'templates' ? `Plantillas (${templates.length})` : `Asignaciones (${assignments.length})`}
+            {t === 'templates' ? `Plantillas (${templates.length})` : `Asignaciones (${assignmentsTotalCount})`}
           </button>
         ))}
       </div>
@@ -235,67 +283,47 @@ const AdminForms: React.FC = () => {
         </div>
       )}
 
-      {/* ── Assignments list ── */}
+      {/* ── Assignments list (catálogo de formularios por paciente) ── */}
       {tab === 'assignments' && (
         <div className="space-y-3">
-          {assignments.length === 0 && (
+          {assignmentsLoading ? (
+            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Cargando...</div>
+          ) : (
+          <>
+          {groupedAssignments.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">
               No hay asignaciones aún.
             </div>
           )}
-          {assignments.map((a) => (
-            <div key={a.id} className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-              <div
-                className="flex items-center justify-between gap-3 p-5 cursor-pointer"
-                onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gray-50 rounded-xl">
-                    <UserIcon className="w-5 h-5 text-gray-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">{a.patientName}</p>
-                    <p className="text-xs text-gray-500">{a.formTemplateName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{a.submissions.length} informe{a.submissions.length !== 1 ? 's' : ''} completado{a.submissions.length !== 1 ? 's' : ''}</p>
-                  </div>
+          {groupedAssignments.map((g) => (
+            <div key={g.patientId} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-50 rounded-xl">
+                  <UserIcon className="w-5 h-5 text-gray-500" />
                 </div>
-                <div className="flex items-center gap-2">
-                  {expandedId === a.id
-                    ? <ChevronUpIcon className="w-4 h-4 text-gray-400" />
-                    : <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-                  }
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">{g.patientName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {g.items.length} formulario{g.items.length !== 1 ? 's' : ''} asignado{g.items.length !== 1 ? 's' : ''} · se llena en cada sesión
+                  </p>
                 </div>
               </div>
-
-              {expandedId === a.id && (
-                <div className="border-t border-gray-100 px-5 py-4 bg-gray-50">
-                  {a.notes && (
-                    <p className="text-xs text-gray-500 mb-3 italic">"{a.notes}"</p>
-                  )}
-                  {a.submissions.length === 0 && (
-                    <p className="text-xs text-amber-600">Sin informes completados aún.</p>
-                  )}
-                  {a.submissions.map((sub) => (
-                    <div key={sub.id} className="mb-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                      <p className="text-xs font-semibold text-gray-700 mb-2">
-                        {sub.therapistName} · {new Date(sub.submittedAt).toLocaleDateString('es-MX')}
-                      </p>
-                      <div className="space-y-1">
-                        {sub.answers.map((ans) => (
-                          <div key={ans.fieldId} className="flex gap-2 text-xs">
-                            <span className="text-gray-500 min-w-[140px] font-medium">{ans.fieldLabel}:</span>
-                            <span className="text-gray-900">
-                              {ans.fieldType === 4 ? (ans.value === 'true' ? 'Sí' : 'No') : ans.value}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {g.items.map((a) => (
+                  <span
+                    key={a.id}
+                    className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg"
+                    title={a.notes ?? undefined}
+                  >
+                    {a.formTemplateName}
+                  </span>
+                ))}
+              </div>
             </div>
           ))}
+          <Pager page={assignmentsPage} totalPages={assignmentsTotalPages} totalCount={assignmentsTotalCount} onPageChange={setAssignmentsPage} />
+          </>
+          )}
         </div>
       )}
 
@@ -419,35 +447,43 @@ const AdminForms: React.FC = () => {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
               <h3 className="text-lg font-extrabold text-gray-900">Asignar formulario</h3>
-              <button onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => { setShowAssignModal(false); setAssignError(''); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Plantilla</label>
-                <select
-                  value={selTemplate}
-                  onChange={(e) => setSelTemplate(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  <option value="">Selecciona una plantilla...</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Paciente</label>
                 <select
                   value={selPatient}
-                  onChange={(e) => setSelPatient(e.target.value)}
+                  onChange={(e) => { setSelPatient(e.target.value); setAssignError(''); }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 >
                   <option value="">Selecciona un paciente...</option>
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Plantilla</label>
+                <select
+                  value={selTemplate}
+                  onChange={(e) => { setSelTemplate(e.target.value); setAssignError(''); }}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+                  <option value="">Selecciona una plantilla...</option>
+                  {templates.map((t) => {
+                    const alreadyAssigned = selPatient ? assignedTemplateIds.has(t.id) : false;
+                    return (
+                      <option key={t.id} value={t.id} disabled={alreadyAssigned}>
+                        {t.name}{alreadyAssigned ? ' (ya asignada a este paciente)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>
@@ -460,17 +496,22 @@ const AdminForms: React.FC = () => {
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
                 />
               </div>
+              {(assignError || isAlreadyAssigned) && (
+                <p className="text-xs text-red-600 font-medium">
+                  {assignError || 'Este paciente ya tiene esa plantilla asignada.'}
+                </p>
+              )}
             </div>
             <div className="flex justify-end gap-3 px-6 pb-6">
               <button
-                onClick={() => setShowAssignModal(false)}
+                onClick={() => { setShowAssignModal(false); setAssignError(''); }}
                 className="px-4 py-2 text-sm text-gray-600 font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAssign}
-                disabled={assigning || !selTemplate || !selPatient}
+                disabled={assigning || !selTemplate || !selPatient || isAlreadyAssigned}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow transition"
               >
                 {assigning ? 'Asignando...' : 'Asignar'}
