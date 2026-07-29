@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { Therapist, TherapistAvailability, Appointment, Patient, TherapistRating, ProgressData, PagedResult, NameLookup } from '../types';
+import type { Therapist, TherapistAvailability, Appointment, Patient, TherapistRating, ProgressData, PagedResult, NameLookup, TherapistPatientSummary, RatingsPagedResult } from '../types';
 
 export interface AppointmentFilters {
   page?: number;
@@ -123,6 +123,14 @@ export const schedulingService = {
     return response.data;
   },
 
+  async getPatientSummariesForTherapist(therapistId: string, page = 1, pageSize = 12): Promise<PagedResult<TherapistPatientSummary>> {
+    const response = await apiClient.get<PagedResult<TherapistPatientSummary>>(
+      `/scheduling/appointments/therapist/${therapistId}/patients/summary`,
+      { params: { page, pageSize } }
+    );
+    return response.data;
+  },
+
   // Pacientes
   async createPatient(data: {
     firstName: string;
@@ -179,6 +187,14 @@ export const schedulingService = {
   async getTherapistRatings(therapistId: string): Promise<TherapistRating[]> {
     const response = await apiClient.get<TherapistRating[]>(
       `/scheduling/therapists/${therapistId}/ratings`
+    );
+    return response.data;
+  },
+
+  async getTherapistRatingsPaged(therapistId: string, page = 1, pageSize = 20): Promise<RatingsPagedResult> {
+    const response = await apiClient.get<RatingsPagedResult>(
+      `/scheduling/therapists/${therapistId}/ratings/paged`,
+      { params: { page, pageSize } }
     );
     return response.data;
   },

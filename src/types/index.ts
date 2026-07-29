@@ -13,6 +13,16 @@ export interface NameLookup {
   name: string;
 }
 
+export interface TherapistPatientSummary {
+  id: string;
+  name: string;
+  dateOfBirth: string;
+  parentName?: string;
+  totalAppointments: number;
+  completedAppointments: number;
+  lastAppointmentDate?: string;
+}
+
 export interface User {
   id: string;
   firstName: string;
@@ -222,4 +232,8 @@ export interface TherapistRating {
   stars: number;
   comment?: string;
   createdAt: string;
+}
+
+export interface RatingsPagedResult extends PagedResult<TherapistRating> {
+  averageStars?: number;
 }

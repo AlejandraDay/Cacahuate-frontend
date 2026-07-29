@@ -45,6 +45,7 @@ const AdminForms: React.FC = () => {
   // Assignments state
   const [assignments, setAssignments] = useState<FormAssignment[]>([]);
   const [assignmentsPage, setAssignmentsPage] = useState(1);
+  const [assignmentsPageSize, setAssignmentsPageSize] = useState(20);
   const [assignmentsTotalCount, setAssignmentsTotalCount] = useState(0);
   const [assignmentsTotalPages, setAssignmentsTotalPages] = useState(0);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
@@ -66,7 +67,7 @@ const AdminForms: React.FC = () => {
   useEffect(() => {
     if (tab === 'assignments') loadAssignments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, assignmentsPage]);
+  }, [tab, assignmentsPage, assignmentsPageSize]);
 
   useEffect(() => {
     if (!selPatient) { setSelPatientAssignments([]); return; }
@@ -92,7 +93,7 @@ const AdminForms: React.FC = () => {
   const loadAssignments = async () => {
     setAssignmentsLoading(true);
     try {
-      const res = await formsService.getAllAssignments(assignmentsPage, 20);
+      const res = await formsService.getAllAssignments(assignmentsPage, assignmentsPageSize);
       setAssignments(res.items);
       setAssignmentsTotalCount(res.totalCount);
       setAssignmentsTotalPages(res.totalPages);
@@ -244,7 +245,7 @@ const AdminForms: React.FC = () => {
 
       {/* ── Templates list ── */}
       {tab === 'templates' && (
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1">
           {templates.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">
               No hay plantillas. Crea la primera.
@@ -295,33 +296,42 @@ const AdminForms: React.FC = () => {
               No hay asignaciones aún.
             </div>
           )}
-          {groupedAssignments.map((g) => (
-            <div key={g.patientId} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-50 rounded-xl">
-                  <UserIcon className="w-5 h-5 text-gray-500" />
+          <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+            {groupedAssignments.map((g) => (
+              <div key={g.patientId} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gray-50 rounded-xl">
+                    <UserIcon className="w-5 h-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">{g.patientName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {g.items.length} formulario{g.items.length !== 1 ? 's' : ''} asignado{g.items.length !== 1 ? 's' : ''} · se llena en cada sesión
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">{g.patientName}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {g.items.length} formulario{g.items.length !== 1 ? 's' : ''} asignado{g.items.length !== 1 ? 's' : ''} · se llena en cada sesión
-                  </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {g.items.map((a) => (
+                    <span
+                      key={a.id}
+                      className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg"
+                      title={a.notes ?? undefined}
+                    >
+                      {a.formTemplateName}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {g.items.map((a) => (
-                  <span
-                    key={a.id}
-                    className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg"
-                    title={a.notes ?? undefined}
-                  >
-                    {a.formTemplateName}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-          <Pager page={assignmentsPage} totalPages={assignmentsTotalPages} totalCount={assignmentsTotalCount} onPageChange={setAssignmentsPage} />
+            ))}
+          </div>
+          <Pager
+            page={assignmentsPage}
+            totalPages={assignmentsTotalPages}
+            totalCount={assignmentsTotalCount}
+            onPageChange={setAssignmentsPage}
+            pageSize={assignmentsPageSize}
+            onPageSizeChange={(size) => { setAssignmentsPageSize(size); setAssignmentsPage(1); }}
+          />
           </>
           )}
         </div>

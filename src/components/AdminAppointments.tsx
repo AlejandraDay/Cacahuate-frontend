@@ -93,6 +93,7 @@ const AdminAppointments: React.FC = () => {
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([])
   const [reports, setReports] = useState<Appointment[]>([])
   const [reportsPage, setReportsPage] = useState(1)
+  const [reportsPageSize, setReportsPageSize] = useState(20)
   const [reportsTotalCount, setReportsTotalCount] = useState(0)
   const [reportsTotalPages, setReportsTotalPages] = useState(0)
   const [overallTotalCount, setOverallTotalCount] = useState(0)
@@ -123,7 +124,7 @@ const AdminAppointments: React.FC = () => {
   useEffect(() => {
     loadReports()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportsPage, patientFilter, therapistFilter, dateFrom, dateTo])
+  }, [reportsPage, reportsPageSize, patientFilter, therapistFilter, dateFrom, dateTo])
 
   const loadPending = async () => {
     try {
@@ -166,7 +167,7 @@ const AdminAppointments: React.FC = () => {
       setReportsLoading(true)
       const result = await schedulingService.getAllAppointments({
         page: reportsPage,
-        pageSize: 20,
+        pageSize: reportsPageSize,
         patientId: patientFilter !== 'all' ? patientFilter : undefined,
         therapistId: therapistFilter !== 'all' ? therapistFilter : undefined,
         dateFrom: dateFrom || undefined,
@@ -328,7 +329,7 @@ const AdminAppointments: React.FC = () => {
           <p className="text-gray-400 text-sm">Cargando...</p>
         </div>
       ) : pendingAppointments.length > 0 ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-h-[720px] overflow-y-auto pr-1">
           {pendingAppointments.map((apt) => (
             <div
               key={apt.id}
@@ -478,7 +479,7 @@ const AdminAppointments: React.FC = () => {
         ) : reports.length > 0 ? (
           <>
             {/* Mobile cards */}
-            <div className="lg:hidden space-y-3">
+            <div className="lg:hidden space-y-3 max-h-[720px] overflow-y-auto pr-1">
               {reports.map((apt) => (
                 <div key={apt.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -526,69 +527,80 @@ const AdminAppointments: React.FC = () => {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden lg:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-8 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
-                <div>Paciente</div>
-                <div>Terapeuta</div>
-                <div>Fecha</div>
-                <div>Hora</div>
-                <div>Calificación</div>
-                <div>Firmas</div>
-                <div>Estado</div>
-                <div className="text-right">Reporte</div>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {reports.map((apt) => (
-                  <div key={apt.id} className="grid px-6 py-4 grid-cols-8 gap-4 items-center hover:bg-gray-50 transition-colors">
-                    <button
-                      onClick={() => navigate(`/admin/patients/${apt.patientId}`)}
-                      className="font-semibold text-gray-900 text-sm hover:text-blue-600 hover:underline transition-colors text-left"
-                    >
-                      {apt.patientName || apt.patientId}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/admin/therapists/${apt.therapistId}`)}
-                      className="text-sm text-gray-600 hover:text-blue-600 hover:underline transition-colors text-left"
-                    >
-                      {apt.therapistName || apt.therapistId}
-                    </button>
-                    <p className="text-sm text-gray-600">
-                      {toLocalDate(apt.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })}
-                    </p>
-                    <p className="text-sm text-gray-600">{apt.startTime}</p>
-                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                      {apt.ratingStars != null ? renderRatingStars(apt.ratingStars) : 'Sin calificación'}
-                    </p>
-                    {renderSignatures(apt)}
-                    <span className={`w-fit inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                      statusStr(apt.status) === 'completed'  ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                      statusStr(apt.status) === 'confirmed'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                      statusStr(apt.status) === 'pending'    ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                      statusStr(apt.status) === 'enroute'    ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                      statusStr(apt.status) === 'inprogress' ? 'bg-green-50 text-green-700 border-green-100' :
-                      'bg-red-50 text-red-700 border-red-100'
-                    }`}>
-                      {statusLabel(apt.status)}
-                    </span>
-                    <div className="text-right flex flex-col gap-1.5 items-end">
-                      {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 ? (
-                        <ReportsMenu submissionIds={apt.formSubmissionIds} onSelect={handleOpenSubmission} />
-                      ) : (
-                        <button
-                          disabled
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
-                        >
-                          <ClipboardDocumentListIcon className="w-4 h-4" />
-                          Sin informe
-                        </button>
-                      )}
+            <div className="hidden lg:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-x-auto">
+              <div className="min-w-[960px]">
+                <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-8 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
+                  <div>Paciente</div>
+                  <div>Terapeuta</div>
+                  <div>Fecha</div>
+                  <div>Hora</div>
+                  <div>Calificación</div>
+                  <div>Firmas</div>
+                  <div>Estado</div>
+                  <div className="text-right">Reporte</div>
+                </div>
+                <div className="divide-y divide-gray-100 max-h-[640px] overflow-y-auto">
+                  {reports.map((apt) => (
+                    <div key={apt.id} className="grid px-6 py-4 grid-cols-8 gap-4 items-center hover:bg-gray-50 transition-colors">
+                      <button
+                        onClick={() => navigate(`/admin/patients/${apt.patientId}`)}
+                        className="font-semibold text-gray-900 text-sm hover:text-blue-600 hover:underline transition-colors text-left truncate"
+                        title={apt.patientName || apt.patientId}
+                      >
+                        {apt.patientName || apt.patientId}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/admin/therapists/${apt.therapistId}`)}
+                        className="text-sm text-gray-600 hover:text-blue-600 hover:underline transition-colors text-left truncate"
+                        title={apt.therapistName || apt.therapistId}
+                      >
+                        {apt.therapistName || apt.therapistId}
+                      </button>
+                      <p className="text-sm text-gray-600 whitespace-nowrap">
+                        {toLocalDate(apt.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })}
+                      </p>
+                      <p className="text-sm text-gray-600 whitespace-nowrap">{apt.startTime}</p>
+                      <p className="text-sm text-gray-600 flex items-center gap-1 whitespace-nowrap">
+                        {apt.ratingStars != null ? renderRatingStars(apt.ratingStars) : 'Sin calificación'}
+                      </p>
+                      {renderSignatures(apt)}
+                      <span className={`w-fit inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap ${
+                        statusStr(apt.status) === 'completed'  ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                        statusStr(apt.status) === 'confirmed'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                        statusStr(apt.status) === 'pending'    ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                        statusStr(apt.status) === 'enroute'    ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                        statusStr(apt.status) === 'inprogress' ? 'bg-green-50 text-green-700 border-green-100' :
+                        'bg-red-50 text-red-700 border-red-100'
+                      }`}>
+                        {statusLabel(apt.status)}
+                      </span>
+                      <div className="text-right flex flex-col gap-1.5 items-end">
+                        {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 ? (
+                          <ReportsMenu submissionIds={apt.formSubmissionIds} onSelect={handleOpenSubmission} />
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-400 cursor-not-allowed whitespace-nowrap"
+                          >
+                            <ClipboardDocumentListIcon className="w-4 h-4" />
+                            Sin informe
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
-            <Pager page={reportsPage} totalPages={reportsTotalPages} totalCount={reportsTotalCount} onPageChange={setReportsPage} />
+            <Pager
+              page={reportsPage}
+              totalPages={reportsTotalPages}
+              totalCount={reportsTotalCount}
+              onPageChange={setReportsPage}
+              pageSize={reportsPageSize}
+              onPageSizeChange={(size) => { setReportsPageSize(size); setReportsPage(1); }}
+            />
           </>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-3xl border border-gray-100">

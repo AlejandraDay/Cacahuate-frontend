@@ -9,6 +9,7 @@ import {
   CheckBadgeIcon,
   StarIcon,
   FunnelIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import DashboardLayout from '../components/DashboardLayout';
@@ -88,9 +89,13 @@ const renderSignatures = (apt: Appointment) => (
   </div>
 );
 
+type SectionTab = 'resumen' | 'citas';
+
 const AdminPatientDetail: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
+
+  const [section, setSection] = useState<SectionTab>('resumen');
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [assignments, setAssignments] = useState<FormAssignment[]>([]);
@@ -100,6 +105,7 @@ const AdminPatientDetail: React.FC = () => {
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsPage, setAppointmentsPage] = useState(1);
+  const [appointmentsPageSize, setAppointmentsPageSize] = useState(10);
   const [appointmentsTotalCount, setAppointmentsTotalCount] = useState(0);
   const [appointmentsTotalPages, setAppointmentsTotalPages] = useState(0);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
@@ -141,7 +147,7 @@ const AdminPatientDetail: React.FC = () => {
     if (!patientId) return;
     loadAppointments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, appointmentsPage, therapistFilter, statusFilter, dateFrom, dateTo]);
+  }, [patientId, appointmentsPage, appointmentsPageSize, therapistFilter, statusFilter, dateFrom, dateTo]);
 
   const loadAppointments = async () => {
     if (!patientId) return;
@@ -149,7 +155,7 @@ const AdminPatientDetail: React.FC = () => {
       setAppointmentsLoading(true);
       const result = await schedulingService.getAllAppointments({
         page: appointmentsPage,
-        pageSize: 10,
+        pageSize: appointmentsPageSize,
         patientId,
         therapistId: therapistFilter !== 'all' ? therapistFilter : undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -222,152 +228,187 @@ const AdminPatientDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* Formularios asignados */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
-              <ClipboardDocumentListIcon className="w-4 h-4 text-indigo-500" />
-              Formularios asignados
-            </h2>
-            {assignments.length === 0 ? (
-              <p className="text-sm text-gray-400">Sin formularios asignados.</p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {assignments.map((a) => (
-                  <span key={a.id} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg" title={a.notes ?? undefined}>
-                    {a.formTemplateName}
-                  </span>
-                ))}
-              </div>
-            )}
+          {/* Section tabs */}
+          <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+            <button
+              onClick={() => setSection('resumen')}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all duration-200 border-b-2 whitespace-nowrap ${
+                section === 'resumen' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <Squares2X2Icon className="w-4 h-4" />
+              Resumen
+            </button>
+            <button
+              onClick={() => setSection('citas')}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all duration-200 border-b-2 whitespace-nowrap ${
+                section === 'citas' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <CalendarDaysIcon className="w-4 h-4" />
+              Citas ({appointmentsTotalCount || '...'})
+            </button>
           </div>
 
-          {/* Filtros */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <FunnelIcon className="w-4 h-4 text-blue-500" />
-              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Filtros</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Terapeuta</label>
-                <select
-                  value={therapistFilter}
-                  onChange={(e) => { setTherapistFilter(e.target.value); setAppointmentsPage(1); }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="all">Todos</option>
-                  {therapistOptions.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Estado</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setAppointmentsPage(1); }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="all">Todos</option>
-                  <option value="Pending">Pendiente</option>
-                  <option value="Confirmed">Confirmada</option>
-                  <option value="Completed">Completada</option>
-                  <option value="Cancelled">Cancelada</option>
-                  <option value="EnRoute">En camino</option>
-                  <option value="InProgress">En curso</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Desde</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => { setDateFrom(e.target.value); setAppointmentsPage(1); }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); setAppointmentsPage(1); }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            </div>
-            {(therapistFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo) && (
-              <button
-                onClick={resetFilters}
-                className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-800"
-              >
-                Limpiar filtros
-              </button>
-            )}
-          </div>
-
-          {/* Historial de citas */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                <CalendarDaysIcon className="w-4 h-4 text-blue-500" />
-                Historial de citas ({appointmentsTotalCount})
+          {section === 'resumen' && (
+            /* Formularios asignados */
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <ClipboardDocumentListIcon className="w-4 h-4 text-indigo-500" />
+                Formularios asignados
               </h2>
-            </div>
-            {appointmentsLoading ? (
-              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Cargando...</div>
-            ) : appointments.length === 0 ? (
-              <p className="text-sm text-gray-400 p-6">Ninguna cita coincide con los filtros.</p>
-            ) : (
-              <>
-                <div className="divide-y divide-gray-100">
-                  {appointments.map((apt) => (
-                    <div key={apt.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">
-                          {toLocalDate(apt.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                          <ClockIcon className="w-3.5 h-3.5" />
-                          {apt.startTime} — {apt.endTime} ·{' '}
-                          <button
-                            onClick={() => navigate(`/admin/therapists/${apt.therapistId}`)}
-                            className="hover:text-blue-600 hover:underline"
-                          >
-                            {apt.therapistName || apt.therapistId}
-                          </button>
-                        </p>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold border ${statusClasses(apt.status)}`}>
-                            {statusLabel(apt.status)}
-                          </span>
-                          {renderSignatures(apt)}
-                          {apt.ratingStars != null && renderRatingStars(apt.ratingStars)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {apt.progressUpdatedAt && (
-                          <button
-                            onClick={() => setProgressView(apt)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
-                          >
-                            <CheckBadgeIcon className="w-4 h-4" />
-                            Ver progreso
-                          </button>
-                        )}
-                        {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 && (
-                          <ReportsMenu submissionIds={apt.formSubmissionIds} onSelect={handleOpenSubmission} disabled={submissionLoading} />
-                        )}
-                      </div>
-                    </div>
+              {assignments.length === 0 ? (
+                <p className="text-sm text-gray-400">Sin formularios asignados.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {assignments.map((a) => (
+                    <span key={a.id} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg" title={a.notes ?? undefined}>
+                      {a.formTemplateName}
+                    </span>
                   ))}
                 </div>
-                <div className="px-4">
-                  <Pager page={appointmentsPage} totalPages={appointmentsTotalPages} totalCount={appointmentsTotalCount} onPageChange={setAppointmentsPage} />
+              )}
+            </div>
+          )}
+
+          {section === 'citas' && (
+            <>
+              {/* Filtros */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <FunnelIcon className="w-4 h-4 text-blue-500" />
+                  <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Filtros</h2>
                 </div>
-              </>
-            )}
-          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Terapeuta</label>
+                    <select
+                      value={therapistFilter}
+                      onChange={(e) => { setTherapistFilter(e.target.value); setAppointmentsPage(1); }}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="all">Todos</option>
+                      {therapistOptions.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Estado</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => { setStatusFilter(e.target.value); setAppointmentsPage(1); }}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="Pending">Pendiente</option>
+                      <option value="Confirmed">Confirmada</option>
+                      <option value="Completed">Completada</option>
+                      <option value="Cancelled">Cancelada</option>
+                      <option value="EnRoute">En camino</option>
+                      <option value="InProgress">En curso</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Desde</label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => { setDateFrom(e.target.value); setAppointmentsPage(1); }}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => { setDateTo(e.target.value); setAppointmentsPage(1); }}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                </div>
+                {(therapistFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo) && (
+                  <button
+                    onClick={resetFilters}
+                    className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+
+              {/* Historial de citas */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                    <CalendarDaysIcon className="w-4 h-4 text-blue-500" />
+                    Historial de citas ({appointmentsTotalCount})
+                  </h2>
+                </div>
+                {appointmentsLoading ? (
+                  <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Cargando...</div>
+                ) : appointments.length === 0 ? (
+                  <p className="text-sm text-gray-400 p-6">Ninguna cita coincide con los filtros.</p>
+                ) : (
+                  <>
+                    <div className="divide-y divide-gray-100 max-h-[640px] overflow-y-auto">
+                      {appointments.map((apt) => (
+                        <div key={apt.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">
+                              {toLocalDate(apt.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                              <ClockIcon className="w-3.5 h-3.5" />
+                              {apt.startTime} — {apt.endTime} ·{' '}
+                              <button
+                                onClick={() => navigate(`/admin/therapists/${apt.therapistId}`)}
+                                className="hover:text-blue-600 hover:underline"
+                              >
+                                {apt.therapistName || apt.therapistId}
+                              </button>
+                            </p>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold border ${statusClasses(apt.status)}`}>
+                                {statusLabel(apt.status)}
+                              </span>
+                              {renderSignatures(apt)}
+                              {apt.ratingStars != null && renderRatingStars(apt.ratingStars)}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {apt.progressUpdatedAt && (
+                              <button
+                                onClick={() => setProgressView(apt)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+                              >
+                                <CheckBadgeIcon className="w-4 h-4" />
+                                Ver progreso
+                              </button>
+                            )}
+                            {apt.formSubmissionIds && apt.formSubmissionIds.length > 0 && (
+                              <ReportsMenu submissionIds={apt.formSubmissionIds} onSelect={handleOpenSubmission} disabled={submissionLoading} />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-4">
+                      <Pager
+                        page={appointmentsPage}
+                        totalPages={appointmentsTotalPages}
+                        totalCount={appointmentsTotalCount}
+                        onPageChange={setAppointmentsPage}
+                        pageSize={appointmentsPageSize}
+                        onPageSizeChange={(size) => { setAppointmentsPageSize(size); setAppointmentsPage(1); }}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
