@@ -11,7 +11,7 @@ import {
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import DashboardLayout from '../components/DashboardLayout';
+import AdminLayout from '../components/AdminLayout';
 import Pager from '../components/Pager';
 import ReportsMenu from '../components/ReportsMenu';
 import FormSubmissionModal from '../components/FormSubmissionModal';
@@ -227,58 +227,83 @@ const AdminTherapistDetail: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 font-medium mb-4"
-      >
-        <ArrowLeftIcon className="w-4 h-4" />
-        Volver
-      </button>
-
+    <AdminLayout>
       {loading ? (
         <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Cargando...</div>
       ) : error ? (
-        <div className="rounded-2xl bg-red-50 border border-red-100 p-4 text-sm text-red-700">{error}</div>
+        <>
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 font-medium mb-3"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+            Volver
+          </button>
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 text-sm text-red-700">{error}</div>
+        </>
       ) : !therapist ? (
         <div className="text-center py-16 text-gray-400 text-sm">Terapeuta no encontrado.</div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Header */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 flex items-center gap-4">
-            <div className="p-3 bg-violet-50 rounded-2xl">
-              <AcademicCapIcon className="w-7 h-7 text-violet-600" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold text-gray-900">{therapist.fullName}</h1>
-                <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
-                  therapist.isActive === false ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'
-                }`}>
-                  {therapist.isActive === false ? 'Inactivo' : 'Activo'}
-                </span>
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="p-2.5 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors shrink-0"
+                aria-label="Volver"
+              >
+                <ArrowLeftIcon className="w-5 h-5" />
+              </button>
+              <div className="p-3 bg-violet-50 rounded-2xl shrink-0">
+                <AcademicCapIcon className="w-7 h-7 text-violet-600" />
               </div>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Duración de sesión: {therapist.sessionDurationMinutes} min
-                {averageStars != null && ` · Calificación promedio: ${averageStars.toFixed(1)} (${ratingsTotalCount})`}
-              </p>
-              {therapist.bio && <p className="text-xs text-gray-400 mt-1">{therapist.bio}</p>}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-extrabold text-gray-900">{therapist.fullName}</h1>
+                  <span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${
+                    therapist.isActive === false ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'
+                  }`}>
+                    {therapist.isActive === false ? 'Inactivo' : 'Activo'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Duración de sesión: {therapist.sessionDurationMinutes} min
+                  {averageStars != null && ` · Calificación promedio: ${averageStars.toFixed(1)} (${ratingsTotalCount})`}
+                </p>
+                {therapist.bio && <p className="text-xs text-gray-400 mt-1">{therapist.bio}</p>}
+              </div>
             </div>
-          </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pacientes</p>
-              <p className="text-2xl font-black text-gray-900 mt-1">{patientsTotalCount}</p>
-            </div>
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Completadas</p>
-              <p className="text-2xl font-black text-gray-900 mt-1">{completedCount}</p>
-            </div>
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Canceladas</p>
-              <p className="text-2xl font-black text-gray-900 mt-1">{cancelledCount}</p>
+            {/* Stats — compact pills */}
+            <div className="flex items-center gap-3 shrink-0 flex-wrap">
+              <div className="flex items-center gap-3 bg-white rounded-2xl pl-3 pr-4 py-2.5 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div className="p-2 bg-blue-50 rounded-xl shrink-0">
+                  <UserIcon className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="border-l border-gray-100 pl-3">
+                  <p className="text-xl font-black text-gray-900 leading-none">{patientsTotalCount}</p>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap mt-0.5">Pacientes</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-white rounded-2xl pl-3 pr-4 py-2.5 border border-emerald-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div className="p-2 bg-emerald-50 rounded-xl shrink-0">
+                  <CalendarDaysIcon className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div className="border-l border-gray-100 pl-3">
+                  <p className="text-xl font-black text-gray-900 leading-none">{completedCount}</p>
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap mt-0.5">Completadas</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-white rounded-2xl pl-3 pr-4 py-2.5 border border-red-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div className="p-2 bg-red-50 rounded-xl shrink-0">
+                  <ClockIcon className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="border-l border-gray-100 pl-3">
+                  <p className="text-xl font-black text-gray-900 leading-none">{cancelledCount}</p>
+                  <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider whitespace-nowrap mt-0.5">Canceladas</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -318,7 +343,7 @@ const AdminTherapistDetail: React.FC = () => {
                   <p className="text-sm text-gray-400">Sin pacientes atendidos aún.</p>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-1">
                       {patientSummaries.map((p) => (
                         <button
                           key={p.id}
@@ -373,7 +398,7 @@ const AdminTherapistDetail: React.FC = () => {
                   <p className="text-sm text-gray-400 p-6">Sin calificaciones aún.</p>
                 ) : (
                   <>
-                    <div className="divide-y divide-gray-100 px-6 max-h-[500px] overflow-y-auto">
+                    <div className="divide-y divide-gray-100 px-6 max-h-[220px] overflow-y-auto">
                       {ratings.map((r) => (
                         <div key={r.id} className="py-3">
                           <div className="flex items-center justify-between gap-2">
@@ -482,7 +507,7 @@ const AdminTherapistDetail: React.FC = () => {
                   <p className="text-sm text-gray-400 p-6">Ninguna cita coincide con los filtros.</p>
                 ) : (
                   <>
-                    <div className="divide-y divide-gray-100 max-h-[640px] overflow-y-auto">
+                    <div className="divide-y divide-gray-100 max-h-[calc(100vh-580px)] overflow-y-auto">
                       {appointments.map((apt) => (
                         <div key={apt.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                           <div>
@@ -536,7 +561,7 @@ const AdminTherapistDetail: React.FC = () => {
           setSubmissionError('');
         }}
       />
-    </DashboardLayout>
+    </AdminLayout>
   );
 };
 

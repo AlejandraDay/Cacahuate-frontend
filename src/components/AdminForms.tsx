@@ -245,7 +245,7 @@ const AdminForms: React.FC = () => {
 
       {/* ── Templates list ── */}
       {tab === 'templates' && (
-        <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
           {templates.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">
               No hay plantillas. Crea la primera.
@@ -296,7 +296,7 @@ const AdminForms: React.FC = () => {
               No hay asignaciones aún.
             </div>
           )}
-          <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto pr-1">
             {groupedAssignments.map((g) => (
               <div key={g.patientId} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center gap-3">

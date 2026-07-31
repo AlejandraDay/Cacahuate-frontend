@@ -238,40 +238,39 @@ const AdminAppointments: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <ShieldCheckIcon className="w-8 h-8 text-blue-600 shrink-0" />
-          <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 via-blue-800 to-black bg-clip-text text-transparent">
-            Panel Admin — {user?.firstName}
-          </h1>
-        </div>
-        <p className="text-gray-500 text-sm ml-11">Aprueba o rechaza las citas solicitadas por los padres</p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-5 sm:gap-6">
-        <div className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide">Pendientes</p>
-            <div className="p-2 bg-amber-50 rounded-xl">
-              <ClockIcon className="w-4 h-4 text-amber-500" />
-            </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <ShieldCheckIcon className="w-8 h-8 text-blue-600 shrink-0" />
+            <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 via-blue-800 to-black bg-clip-text text-transparent">
+              Panel Admin — {user?.firstName}
+            </h1>
           </div>
-          <p className="text-3xl sm:text-4xl font-black text-gray-900">{pendingAppointments.length}</p>
-          <p className="text-gray-400 text-xs mt-1">requieren acción</p>
+          <p className="text-gray-500 text-sm ml-11">Aprueba o rechaza las citas solicitadas por los padres</p>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide">Total</p>
-            <div className="p-2 bg-blue-50 rounded-xl">
-              <CalendarDaysIcon className="w-4 h-4 text-blue-500" />
+        {/* Stats — compact pills */}
+        <div className="flex items-center gap-3 ml-11 sm:ml-0 shrink-0">
+          <div className="flex items-center gap-3 bg-white rounded-2xl pl-3 pr-4 py-2.5 border border-amber-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="p-2 bg-amber-50 rounded-xl shrink-0">
+              <ClockIcon className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="border-l border-gray-100 pl-3">
+              <p className="text-xl font-black text-gray-900 leading-none">{pendingAppointments.length}</p>
+              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider whitespace-nowrap mt-0.5">Pendientes</p>
             </div>
           </div>
-          <p className="text-3xl sm:text-4xl font-black text-gray-900">{overallTotalCount}</p>
-          <p className="text-gray-400 text-xs mt-1">citas en el sistema</p>
+          <div className="flex items-center gap-3 bg-white rounded-2xl pl-3 pr-4 py-2.5 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="p-2 bg-blue-50 rounded-xl shrink-0">
+              <CalendarDaysIcon className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="border-l border-gray-100 pl-3">
+              <p className="text-xl font-black text-gray-900 leading-none">{overallTotalCount}</p>
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap mt-0.5">Total</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -329,7 +328,7 @@ const AdminAppointments: React.FC = () => {
           <p className="text-gray-400 text-sm">Cargando...</p>
         </div>
       ) : pendingAppointments.length > 0 ? (
-        <div className="space-y-5 max-h-[720px] overflow-y-auto pr-1">
+        <div className="space-y-5 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
           {pendingAppointments.map((apt) => (
             <div
               key={apt.id}
@@ -479,7 +478,7 @@ const AdminAppointments: React.FC = () => {
         ) : reports.length > 0 ? (
           <>
             {/* Mobile cards */}
-            <div className="lg:hidden space-y-3 max-h-[720px] overflow-y-auto pr-1">
+            <div className="lg:hidden space-y-3 max-h-[calc(100vh-620px)] overflow-y-auto pr-1">
               {reports.map((apt) => (
                 <div key={apt.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -539,7 +538,7 @@ const AdminAppointments: React.FC = () => {
                   <div>Estado</div>
                   <div className="text-right">Reporte</div>
                 </div>
-                <div className="divide-y divide-gray-100 max-h-[640px] overflow-y-auto">
+                <div className="divide-y divide-gray-100 max-h-[calc(100vh-620px)] overflow-y-auto">
                   {reports.map((apt) => (
                     <div key={apt.id} className="grid px-6 py-4 grid-cols-8 gap-4 items-center hover:bg-gray-50 transition-colors">
                       <button
