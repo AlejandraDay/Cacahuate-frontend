@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ClipboardDocumentListIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface ReportsMenuProps {
@@ -12,15 +13,34 @@ const buttonClass = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:b
 
 const ReportsMenu: React.FC<ReportsMenuProps> = ({ submissionIds, onSelect, disabled, className }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, [open]);
 
   useEffect(() => {
+    if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
+    const closeOnScrollOrResize = () => setOpen(false);
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    window.addEventListener('scroll', closeOnScrollOrResize, true);
+    window.addEventListener('resize', closeOnScrollOrResize);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('scroll', closeOnScrollOrResize, true);
+      window.removeEventListener('resize', closeOnScrollOrResize);
+    };
+  }, [open]);
 
   if (submissionIds.length === 0) return null;
 
@@ -34,14 +54,18 @@ const ReportsMenu: React.FC<ReportsMenuProps> = ({ submissionIds, onSelect, disa
   }
 
   return (
-    <div className={`relative ${className ?? ''}`} ref={ref}>
-      <button onClick={() => setOpen((v) => !v)} disabled={disabled} className={buttonClass}>
+    <div className={`relative ${className ?? ''}`}>
+      <button ref={buttonRef} onClick={() => setOpen((v) => !v)} disabled={disabled} className={buttonClass}>
         <ClipboardDocumentListIcon className="w-4 h-4" />
         Ver informes ({submissionIds.length})
         <ChevronDownIcon className="w-3.5 h-3.5" />
       </button>
-      {open && (
-        <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden">
+      {open && position && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: position.top, left: position.left, minWidth: Math.max(position.width, 144) }}
+          className="max-h-64 overflow-y-auto bg-white rounded-xl shadow-lg border border-gray-100 z-50"
+        >
           {submissionIds.map((id, i) => (
             <button
               key={id}
@@ -51,7 +75,8 @@ const ReportsMenu: React.FC<ReportsMenuProps> = ({ submissionIds, onSelect, disa
               Informe {i + 1}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

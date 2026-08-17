@@ -21,12 +21,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { schedulingService } from '../services/scheduling'
 import { formsService } from '../services/forms'
-import type { Appointment, FormSubmissionResult, Patient, Therapist } from '../types'
+import type { Appointment, FormSubmissionResult, Therapist } from '../types'
 import ConfirmDialog from './ConfirmDialog'
 import ProgressViewModal from './ProgressViewModal'
 import FormSubmissionModal from './FormSubmissionModal'
 import ReportsMenu from './ReportsMenu'
 import Pager from './Pager'
+import PatientCombobox from './PatientCombobox'
 
 const toLocalDate = (dateStr: string) => {
   const [y, m, d] = dateStr.split('T')[0].split('-').map(Number)
@@ -97,7 +98,6 @@ const AdminAppointments: React.FC = () => {
   const [reportsTotalCount, setReportsTotalCount] = useState(0)
   const [reportsTotalPages, setReportsTotalPages] = useState(0)
   const [overallTotalCount, setOverallTotalCount] = useState(0)
-  const [patients, setPatients] = useState<Patient[]>([])
   const [therapists, setTherapists] = useState<Therapist[]>([])
   const [loading, setLoading] = useState(false)
   const [reportsLoading, setReportsLoading] = useState(false)
@@ -142,14 +142,10 @@ const AdminAppointments: React.FC = () => {
 
   const loadLookups = async () => {
     try {
-      const [pts, ths] = await Promise.all([
-        schedulingService.getPatientsLookup(),
-        schedulingService.getTherapists(),
-      ])
-      setPatients(pts)
+      const ths = await schedulingService.getTherapists()
       setTherapists(ths)
     } catch {
-      // los dropdowns de filtro no son críticos
+      // el dropdown de filtro no es crítico
     }
   }
 
@@ -238,9 +234,9 @@ const AdminAppointments: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex-1 min-h-0 flex flex-col gap-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <ShieldCheckIcon className="w-8 h-8 text-blue-600 shrink-0" />
@@ -275,7 +271,7 @@ const AdminAppointments: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+      <div className="shrink-0 flex gap-1 border-b border-gray-200 overflow-x-auto">
         <button
           onClick={() => setActiveTab('pending')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all duration-200 border-b-2 whitespace-nowrap ${
@@ -314,9 +310,9 @@ const AdminAppointments: React.FC = () => {
       )}
 
       {activeTab === 'pending' && (
-      <>
+      <div className="flex-1 min-h-0 flex flex-col gap-4">
       {/* Section title */}
-      <div className="flex items-center gap-2 pt-1">
+      <div className="shrink-0 flex items-center gap-2 pt-1">
         <ClockIcon className="w-4 h-4 text-amber-500" />
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Pendientes de aprobación</h2>
       </div>
@@ -328,7 +324,7 @@ const AdminAppointments: React.FC = () => {
           <p className="text-gray-400 text-sm">Cargando...</p>
         </div>
       ) : pendingAppointments.length > 0 ? (
-        <div className="space-y-5 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5">
           {pendingAppointments.map((apt) => (
             <div
               key={apt.id}
@@ -402,13 +398,13 @@ const AdminAppointments: React.FC = () => {
           <p className="text-xs text-gray-400 mt-1">No hay citas pendientes de aprobación</p>
         </div>
       )}
-      </>
+      </div>
       )}
 
       {activeTab === 'reports' && (
-      <>
+      <div className="flex-1 min-h-0 flex flex-col gap-4">
         {/* Filters */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+        <div className="shrink-0 bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <FunnelIcon className="w-4 h-4 text-blue-500" />
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Filtros</h2>
@@ -416,16 +412,11 @@ const AdminAppointments: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Paciente</label>
-              <select
-                value={patientFilter}
-                onChange={(e) => { setPatientFilter(e.target.value); setReportsPage(1) }}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="all">Todos</option>
-                {patients.map((p) => (
-                  <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
-                ))}
-              </select>
+              <PatientCombobox
+                value={patientFilter === 'all' ? '' : patientFilter}
+                onChange={(id) => { setPatientFilter(id || 'all'); setReportsPage(1) }}
+                allowAll
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Terapeuta</label>
@@ -476,9 +467,9 @@ const AdminAppointments: React.FC = () => {
             <p className="text-gray-400 text-sm">Cargando...</p>
           </div>
         ) : reports.length > 0 ? (
-          <>
+          <div className="flex-1 min-h-0 flex flex-col gap-4">
             {/* Mobile cards */}
-            <div className="lg:hidden space-y-3 max-h-[calc(100vh-620px)] overflow-y-auto pr-1">
+            <div className="lg:hidden flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
               {reports.map((apt) => (
                 <div key={apt.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -526,9 +517,10 @@ const AdminAppointments: React.FC = () => {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden lg:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-x-auto">
+            <div className="hidden lg:flex flex-1 min-h-0 flex-col bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-auto">
               <div className="min-w-[960px]">
-                <div className="grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-8 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
+                <div className="sticky top-0 z-10 grid bg-gray-50 border-b border-gray-100 px-6 py-4 grid-cols-8 gap-4 items-center text-xs font-bold text-gray-700 uppercase tracking-wide">
                   <div>Paciente</div>
                   <div>Terapeuta</div>
                   <div>Fecha</div>
@@ -538,7 +530,7 @@ const AdminAppointments: React.FC = () => {
                   <div>Estado</div>
                   <div className="text-right">Reporte</div>
                 </div>
-                <div className="divide-y divide-gray-100 max-h-[calc(100vh-620px)] overflow-y-auto">
+                <div className="divide-y divide-gray-100">
                   {reports.map((apt) => (
                     <div key={apt.id} className="grid px-6 py-4 grid-cols-8 gap-4 items-center hover:bg-gray-50 transition-colors">
                       <button
@@ -590,17 +582,20 @@ const AdminAppointments: React.FC = () => {
                   ))}
                 </div>
               </div>
+              </div>
             </div>
 
-            <Pager
-              page={reportsPage}
-              totalPages={reportsTotalPages}
-              totalCount={reportsTotalCount}
-              onPageChange={setReportsPage}
-              pageSize={reportsPageSize}
-              onPageSizeChange={(size) => { setReportsPageSize(size); setReportsPage(1); }}
-            />
-          </>
+            <div className="shrink-0">
+              <Pager
+                page={reportsPage}
+                totalPages={reportsTotalPages}
+                totalCount={reportsTotalCount}
+                onPageChange={setReportsPage}
+                pageSize={reportsPageSize}
+                onPageSizeChange={(size) => { setReportsPageSize(size); setReportsPage(1); }}
+              />
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-3xl border border-gray-100">
             <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
@@ -610,7 +605,7 @@ const AdminAppointments: React.FC = () => {
             <p className="text-xs text-gray-400 mt-1">No hay sesiones que coincidan con los filtros</p>
           </div>
         )}
-      </>
+      </div>
       )}
 
       <ConfirmDialog

@@ -244,9 +244,9 @@ const AdminTherapistDetail: React.FC = () => {
       ) : !therapist ? (
         <div className="text-center py-16 text-gray-400 text-sm">Terapeuta no encontrado.</div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-4">
           {/* Header */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="shrink-0 bg-white rounded-3xl border border-gray-100 shadow-sm p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
@@ -308,7 +308,7 @@ const AdminTherapistDetail: React.FC = () => {
           </div>
 
           {/* Section tabs */}
-          <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+          <div className="shrink-0 flex gap-1 border-b border-gray-200 overflow-x-auto">
             <button
               onClick={() => setSection('resumen')}
               className={`inline-flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all duration-200 border-b-2 whitespace-nowrap ${
@@ -427,9 +427,9 @@ const AdminTherapistDetail: React.FC = () => {
           )}
 
           {section === 'citas' && (
-            <>
+            <div className="flex-1 min-h-0 flex flex-col gap-4">
               {/* Filtros */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+              <div className="shrink-0 bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <FunnelIcon className="w-4 h-4 text-blue-500" />
                   <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Filtros</h2>
@@ -494,8 +494,8 @@ const AdminTherapistDetail: React.FC = () => {
               </div>
 
               {/* Historial de citas */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex-1 min-h-0 flex flex-col bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="shrink-0 px-6 py-4 border-b border-gray-100">
                   <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                     <CalendarDaysIcon className="w-4 h-4 text-blue-500" />
                     Historial de citas ({appointmentsTotalCount})
@@ -506,8 +506,8 @@ const AdminTherapistDetail: React.FC = () => {
                 ) : appointments.length === 0 ? (
                   <p className="text-sm text-gray-400 p-6">Ninguna cita coincide con los filtros.</p>
                 ) : (
-                  <>
-                    <div className="divide-y divide-gray-100 max-h-[calc(100vh-580px)] overflow-y-auto">
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100">
                       {appointments.map((apt) => (
                         <div key={apt.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                           <div>
@@ -534,7 +534,7 @@ const AdminTherapistDetail: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    <div className="px-4">
+                    <div className="shrink-0 px-4">
                       <Pager
                         page={appointmentsPage}
                         totalPages={appointmentsTotalPages}
@@ -544,10 +544,10 @@ const AdminTherapistDetail: React.FC = () => {
                         onPageSizeChange={(size) => { setAppointmentsPageSize(size); setAppointmentsPage(1); }}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

@@ -8,10 +8,10 @@ import {
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import { formsService } from '../services/forms';
-import { schedulingService } from '../services/scheduling';
-import type { FormTemplate, FormAssignment, Patient, FieldType } from '../types';
+import type { FormTemplate, FormAssignment, FieldType } from '../types';
 import { FIELD_TYPE_LABELS as LABELS } from '../types';
 import Pager from './Pager';
+import PatientCombobox from './PatientCombobox';
 
 // ── Field builder row ──────────────────────────────────────────────────────────
 interface DraftField {
@@ -49,7 +49,6 @@ const AdminForms: React.FC = () => {
   const [assignmentsTotalCount, setAssignmentsTotalCount] = useState(0);
   const [assignmentsTotalPages, setAssignmentsTotalPages] = useState(0);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selTemplate, setSelTemplate] = useState('');
   const [selPatient, setSelPatient] = useState('');
@@ -79,12 +78,8 @@ const AdminForms: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [tpls, pts] = await Promise.all([
-        formsService.getTemplates(),
-        schedulingService.getPatientsLookup().catch(() => [] as Patient[]),
-      ]);
+      const tpls = await formsService.getTemplates();
       setTemplates(tpls);
-      setPatients(pts);
     } finally {
       setLoading(false);
     }
@@ -197,9 +192,9 @@ const AdminForms: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col gap-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl font-extrabold text-gray-900">Formularios</h2>
           <p className="text-sm text-gray-500 mt-0.5">Crea plantillas y asígnalas a pacientes</p>
@@ -227,7 +222,7 @@ const AdminForms: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="shrink-0 flex border-b border-gray-200">
         {(['templates', 'assignments'] as const).map((t) => (
           <button
             key={t}
@@ -245,7 +240,7 @@ const AdminForms: React.FC = () => {
 
       {/* ── Templates list ── */}
       {tab === 'templates' && (
-        <div className="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
           {templates.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">
               No hay plantillas. Crea la primera.
@@ -286,17 +281,17 @@ const AdminForms: React.FC = () => {
 
       {/* ── Assignments list (catálogo de formularios por paciente) ── */}
       {tab === 'assignments' && (
-        <div className="space-y-3">
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
           {assignmentsLoading ? (
             <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Cargando...</div>
           ) : (
-          <>
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
           {groupedAssignments.length === 0 && (
             <div className="text-center py-12 text-gray-400 text-sm">
               No hay asignaciones aún.
             </div>
           )}
-          <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto pr-1">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
             {groupedAssignments.map((g) => (
               <div key={g.patientId} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -324,15 +319,17 @@ const AdminForms: React.FC = () => {
               </div>
             ))}
           </div>
-          <Pager
-            page={assignmentsPage}
-            totalPages={assignmentsTotalPages}
-            totalCount={assignmentsTotalCount}
-            onPageChange={setAssignmentsPage}
-            pageSize={assignmentsPageSize}
-            onPageSizeChange={(size) => { setAssignmentsPageSize(size); setAssignmentsPage(1); }}
-          />
-          </>
+          <div className="shrink-0">
+            <Pager
+              page={assignmentsPage}
+              totalPages={assignmentsTotalPages}
+              totalCount={assignmentsTotalCount}
+              onPageChange={setAssignmentsPage}
+              pageSize={assignmentsPageSize}
+              onPageSizeChange={(size) => { setAssignmentsPageSize(size); setAssignmentsPage(1); }}
+            />
+          </div>
+          </div>
           )}
         </div>
       )}
@@ -467,16 +464,11 @@ const AdminForms: React.FC = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Paciente</label>
-                <select
+                <PatientCombobox
                   value={selPatient}
-                  onChange={(e) => { setSelPatient(e.target.value); setAssignError(''); }}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  <option value="">Selecciona un paciente...</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
-                  ))}
-                </select>
+                  onChange={(id) => { setSelPatient(id); setAssignError(''); }}
+                  placeholder="Selecciona un paciente..."
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Plantilla</label>
