@@ -15,6 +15,7 @@ import {
   FunnelIcon,
   InboxIcon,
   StarIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { useNavigate } from 'react-router-dom'
@@ -114,6 +115,7 @@ const AdminAppointments: React.FC = () => {
   const [therapistFilter, setTherapistFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
     loadPending()
@@ -404,60 +406,74 @@ const AdminAppointments: React.FC = () => {
       {activeTab === 'reports' && (
       <div className="flex-1 min-h-0 flex flex-col gap-4">
         {/* Filters */}
-        <div className="shrink-0 bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <FunnelIcon className="w-4 h-4 text-blue-500" />
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Filtros</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Paciente</label>
-              <PatientCombobox
-                value={patientFilter === 'all' ? '' : patientFilter}
-                onChange={(id) => { setPatientFilter(id || 'all'); setReportsPage(1) }}
-                allowAll
-              />
+        <div className="shrink-0 bg-white rounded-3xl border border-gray-100 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 p-5 lg:cursor-default"
+          >
+            <div className="flex items-center gap-2">
+              <FunnelIcon className="w-4 h-4 text-blue-500" />
+              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Filtros</h2>
+              {(patientFilter !== 'all' || therapistFilter !== 'all' || dateFrom || dateTo) && (
+                <span className="lg:hidden inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                  {[patientFilter !== 'all', therapistFilter !== 'all', !!dateFrom, !!dateTo].filter(Boolean).length}
+                </span>
+              )}
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Terapeuta</label>
-              <select
-                value={therapistFilter}
-                onChange={(e) => { setTherapistFilter(e.target.value); setReportsPage(1) }}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            <ChevronDownIcon className={`w-4 h-4 text-gray-400 lg:hidden transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <div className={`${filtersOpen ? 'block' : 'hidden'} lg:block px-5 pb-5`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Paciente</label>
+                <PatientCombobox
+                  value={patientFilter === 'all' ? '' : patientFilter}
+                  onChange={(id) => { setPatientFilter(id || 'all'); setReportsPage(1) }}
+                  allowAll
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Terapeuta</label>
+                <select
+                  value={therapistFilter}
+                  onChange={(e) => { setTherapistFilter(e.target.value); setReportsPage(1) }}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="all">Todos</option>
+                  {therapists.map((t) => (
+                    <option key={t.id} value={t.id}>{t.fullName}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Desde</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); setReportsPage(1) }}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setReportsPage(1) }}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+            {(patientFilter !== 'all' || therapistFilter !== 'all' || dateFrom || dateTo) && (
+              <button
+                onClick={resetFilters}
+                className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-800"
               >
-                <option value="all">Todos</option>
-                {therapists.map((t) => (
-                  <option key={t.id} value={t.id}>{t.fullName}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Desde</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setReportsPage(1) }}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setReportsPage(1) }}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
+                Limpiar filtros
+              </button>
+            )}
           </div>
-          {(patientFilter !== 'all' || therapistFilter !== 'all' || dateFrom || dateTo) && (
-            <button
-              onClick={resetFilters}
-              className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-800"
-            >
-              Limpiar filtros
-            </button>
-          )}
         </div>
 
         {/* Reports table */}

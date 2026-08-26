@@ -98,6 +98,19 @@ export interface Patient {
   parentName?: string;
 }
 
+export interface ParentSummary {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface AdminCreatedUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export interface Notification {
   id: string
   title: string

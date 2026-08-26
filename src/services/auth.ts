@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { LoginRequest, LoginResponse, RegisterRequest } from '../types';
+import type { LoginRequest, LoginResponse, RegisterRequest, AdminCreatedUser } from '../types';
 
 const roleToNumber: Record<string, number> = {
   Admin: 0,
@@ -19,6 +19,32 @@ export const authService = {
       role: roleToNumber[data.role as string] ?? 2,
     };
     const response = await apiClient.post<LoginResponse>('/auth/register', payload);
+    return response.data;
+  },
+
+  async adminCreateParent(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }): Promise<AdminCreatedUser> {
+    const response = await apiClient.post<AdminCreatedUser>('/auth/admin/create-parent', {
+      ...data,
+      role: roleToNumber.Parent,
+    });
+    return response.data;
+  },
+
+  async adminCreateTherapist(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }): Promise<AdminCreatedUser> {
+    const response = await apiClient.post<AdminCreatedUser>('/auth/admin/create-therapist', {
+      ...data,
+      role: roleToNumber.Therapist,
+    });
     return response.data;
   },
 

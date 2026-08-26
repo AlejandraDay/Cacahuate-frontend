@@ -6,11 +6,9 @@ import {
   XCircleIcon,
   UserIcon,
   UsersIcon,
-  PlusIcon,
   XMarkIcon,
   InboxIcon,
   ExclamationTriangleIcon,
-  ExclamationCircleIcon,
   CheckIcon,
   BookmarkIcon,
   PlusCircleIcon,
@@ -95,10 +93,6 @@ const ParentAppointments: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>()
   const [selectedSlot, setSelectedSlot] = useState<string | undefined>()
 
-  const [showPatientForm, setShowPatientForm] = useState(false)
-  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', dateOfBirth: '' })
-  const [patientFormLoading, setPatientFormLoading] = useState(false)
-  const [patientFormError, setPatientFormError] = useState('')
 
   useEffect(() => {
     loadAppointments()
@@ -135,26 +129,6 @@ const ParentAppointments: React.FC = () => {
   const loadPatients = async () => {
     try { setPatients(await schedulingService.getMyPatients()) }
     catch { setPatients([]) }
-  }
-
-  const handleCreatePatient = async () => {
-    if (!newPatient.firstName || !newPatient.lastName || !newPatient.dateOfBirth) {
-      setPatientFormError('Completa todos los campos')
-      return
-    }
-    try {
-      setPatientFormLoading(true)
-      const created = await schedulingService.createPatient(newPatient)
-      setPatients((prev) => [...prev, created])
-      setSelectedPatient(created.id)
-      setNewPatient({ firstName: '', lastName: '', dateOfBirth: '' })
-      setShowPatientForm(false)
-      setPatientFormError('')
-    } catch (err) {
-      setPatientFormError(err instanceof Error ? err.message : 'Error al registrar paciente')
-    } finally {
-      setPatientFormLoading(false)
-    }
   }
 
   const loadAvailability = async (therapistId: string) => {
@@ -505,68 +479,7 @@ const ParentAppointments: React.FC = () => {
                     <span className="text-base sm:text-lg font-bold text-gray-800">Selecciona el paciente</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setShowPatientForm((v) => !v); setPatientFormError('') }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-800 text-white text-xs font-bold rounded-xl transition-all shrink-0"
-                >
-                  {showPatientForm ? <><XMarkIcon className="w-3.5 h-3.5" /> Cancelar</> : <><PlusIcon className="w-3.5 h-3.5" /> Registrar hijo</>}
-                </button>
               </div>
-
-              {showPatientForm && (
-                <div className="mb-4 p-4 sm:p-5 bg-blue-50 border border-blue-200 rounded-xl space-y-4">
-                  <p className="text-sm font-bold text-blue-900">Nuevo paciente</p>
-                  {patientFormError && (
-                    <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                      <ExclamationCircleIcon className="w-4 h-4 shrink-0" />
-                      {patientFormError}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre</label>
-                      <input
-                        type="text"
-                        value={newPatient.firstName}
-                        onChange={(e) => setNewPatient((p) => ({ ...p, firstName: e.target.value }))}
-                        placeholder="Nombre"
-                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Apellido</label>
-                      <input
-                        type="text"
-                        value={newPatient.lastName}
-                        onChange={(e) => setNewPatient((p) => ({ ...p, lastName: e.target.value }))}
-                        placeholder="Apellido"
-                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Fecha de nacimiento</label>
-                    <input
-                      type="date"
-                      value={newPatient.dateOfBirth}
-                      max={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setNewPatient((p) => ({ ...p, dateOfBirth: e.target.value }))}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCreatePatient}
-                    disabled={patientFormLoading}
-                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-all"
-                  >
-                    {patientFormLoading
-                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Registrando...</>
-                      : <><CheckIcon className="w-4 h-4" /> Registrar paciente</>}
-                  </button>
-                </div>
-              )}
 
               {patients.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -592,12 +505,10 @@ const ParentAppointments: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                !showPatientForm && (
-                  <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 text-sm">
-                    <UsersIcon className="w-5 h-5 text-gray-400 shrink-0" />
-                    <span>No hay pacientes registrados. Usa <strong>"Registrar hijo"</strong> para agregar uno.</span>
-                  </div>
-                )
+                <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 text-sm">
+                  <UsersIcon className="w-5 h-5 text-gray-400 shrink-0" />
+                  <span>Aún no tienes pacientes registrados. Contacta a la administración para que los registre y los asigne a tu cuenta.</span>
+                </div>
               )}
             </div>
 

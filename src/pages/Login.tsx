@@ -48,7 +48,7 @@ const configs: Record<PortalSlug, PortalConfig> = {
     logoGradFrom: '#34D399',
     logoGradTo: '#059669',
     titleColor: 'text-green-900',
-    canRegister: true,
+    canRegister: false,
     fixedRole: 'Parent',
     requiredRole: 'Parent',
     roleLabel: 'padres',

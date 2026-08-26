@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { Therapist, TherapistAvailability, Appointment, Patient, TherapistRating, ProgressData, PagedResult, NameLookup, TherapistPatientSummary, RatingsPagedResult } from '../types';
+import type { Therapist, TherapistAvailability, Appointment, Patient, TherapistRating, ProgressData, PagedResult, NameLookup, TherapistPatientSummary, RatingsPagedResult, ParentSummary } from '../types';
 
 export interface AppointmentFilters {
   page?: number;
@@ -132,15 +132,6 @@ export const schedulingService = {
   },
 
   // Pacientes
-  async createPatient(data: {
-    firstName: string;
-    lastName: string;
-    dateOfBirth: string;
-  }): Promise<Patient> {
-    const response = await apiClient.post<Patient>('/scheduling/patients', data);
-    return response.data;
-  },
-
   async getMyPatients(): Promise<Patient[]> {
     const response = await apiClient.get<Patient[]>('/scheduling/patients/my');
     return response.data;
@@ -160,6 +151,25 @@ export const schedulingService = {
 
   async getPatientById(patientId: string): Promise<Patient> {
     const response = await apiClient.get<Patient>(`/scheduling/patients/${patientId}`);
+    return response.data;
+  },
+
+  // Padres — Admin
+  async getAllParents(page = 1, pageSize = 20, search?: string): Promise<PagedResult<ParentSummary>> {
+    const response = await apiClient.get<PagedResult<ParentSummary>>('/scheduling/admin/parents', {
+      params: { page, pageSize, search },
+    });
+    return response.data;
+  },
+
+  async createPatientAsAdmin(data: {
+    parentUserId: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    notes?: string;
+  }): Promise<Patient> {
+    const response = await apiClient.post<Patient>('/scheduling/admin/patients', data);
     return response.data;
   },
 
