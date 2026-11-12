@@ -60,15 +60,6 @@ const AdminForms: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    load();
-  }, []);
-
-  useEffect(() => {
-    if (tab === 'assignments') loadAssignments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, assignmentsPage, assignmentsPageSize]);
-
-  useEffect(() => {
     if (!selPatient) { setSelPatientAssignments([]); return; }
     formsService.getAllAssignments(1, 100, selPatient)
       .then((res) => setSelPatientAssignments(res.items))
@@ -96,6 +87,15 @@ const AdminForms: React.FC = () => {
       setAssignmentsLoading(false);
     }
   };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'assignments') loadAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, assignmentsPage, assignmentsPageSize]);
 
   // ── Template builder handlers ──────────────────────────────────────────────
 

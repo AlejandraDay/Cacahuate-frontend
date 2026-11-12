@@ -117,17 +117,6 @@ const AdminAppointments: React.FC = () => {
   const [dateTo, setDateTo] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
 
-  useEffect(() => {
-    loadPending()
-    loadLookups()
-    loadOverallCount()
-  }, [])
-
-  useEffect(() => {
-    loadReports()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportsPage, reportsPageSize, patientFilter, therapistFilter, dateFrom, dateTo])
-
   const loadPending = async () => {
     try {
       setLoading(true)
@@ -181,6 +170,17 @@ const AdminAppointments: React.FC = () => {
       setReportsLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadPending()
+    loadLookups()
+    loadOverallCount()
+  }, [])
+
+  useEffect(() => {
+    loadReports()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportsPage, reportsPageSize, patientFilter, therapistFilter, dateFrom, dateTo])
 
   const resetFilters = () => {
     setPatientFilter('all')

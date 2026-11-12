@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import AdminAppointments from '../components/AdminAppointments';
@@ -11,12 +11,8 @@ const isTab = (value: string | null): value is Tab => value === 'appointments' |
 
 const AdminDashboard: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState<Tab>(isTab(searchParams.get('tab')) ? searchParams.get('tab') as Tab : 'appointments');
-
-  useEffect(() => {
-    const t = searchParams.get('tab');
-    if (isTab(t)) setTab(t);
-  }, [searchParams]);
+  const param = searchParams.get('tab');
+  const tab: Tab = isTab(param) ? param : 'appointments';
 
   return (
     <AdminLayout>

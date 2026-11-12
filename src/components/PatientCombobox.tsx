@@ -51,10 +51,6 @@ const PatientCombobox: React.FC<PatientComboboxProps> = ({
     return () => clearTimeout(handle);
   }, [query, open]);
 
-  useEffect(() => {
-    if (!value) setSelectedLabel('');
-  }, [value]);
-
   const handleSelect = (p: Patient) => {
     setSelectedLabel(`${p.firstName} ${p.lastName}`);
     setQuery('');
@@ -69,7 +65,7 @@ const PatientCombobox: React.FC<PatientComboboxProps> = ({
     onChange('', null);
   };
 
-  const displayValue = open ? query : selectedLabel || (allowAll && !value ? 'Todos' : '');
+  const displayValue = open ? query : (value ? selectedLabel : '') || (allowAll && !value ? 'Todos' : '');
 
   return (
     <div ref={containerRef} className="relative">

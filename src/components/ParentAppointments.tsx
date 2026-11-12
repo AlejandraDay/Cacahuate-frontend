@@ -94,19 +94,6 @@ const ParentAppointments: React.FC = () => {
   const [selectedSlot, setSelectedSlot] = useState<string | undefined>()
 
 
-  useEffect(() => {
-    loadAppointments()
-    loadTherapists()
-  }, [])
-
-  useEffect(() => {
-    if (activeTab === 'book') loadPatients()
-  }, [activeTab])
-
-  useEffect(() => {
-    if (selectedTherapist) loadAvailability(selectedTherapist)
-  }, [selectedTherapist])
-
   const loadAppointments = async () => {
     try {
       setLoading(true)
@@ -135,6 +122,19 @@ const ParentAppointments: React.FC = () => {
     try { setAvailabilityBlocks(await schedulingService.getTherapistAvailability(therapistId)) }
     catch { setAvailabilityBlocks([]) }
   }
+
+  useEffect(() => {
+    loadAppointments()
+    loadTherapists()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'book') loadPatients()
+  }, [activeTab])
+
+  useEffect(() => {
+    if (selectedTherapist) loadAvailability(selectedTherapist)
+  }, [selectedTherapist])
 
   const markedDates = availabilityBlocks.map((b) => {
     const [y, m, d] = b.date.split('-').map(Number)

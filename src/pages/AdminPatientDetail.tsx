@@ -143,12 +143,6 @@ const AdminPatientDetail: React.FC = () => {
     })();
   }, [patientId]);
 
-  useEffect(() => {
-    if (!patientId) return;
-    loadAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, appointmentsPage, appointmentsPageSize, therapistFilter, statusFilter, dateFrom, dateTo]);
-
   const loadAppointments = async () => {
     if (!patientId) return;
     try {
@@ -172,6 +166,12 @@ const AdminPatientDetail: React.FC = () => {
       setAppointmentsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!patientId) return;
+    loadAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, appointmentsPage, appointmentsPageSize, therapistFilter, statusFilter, dateFrom, dateTo]);
 
   const resetFilters = () => {
     setTherapistFilter('all');

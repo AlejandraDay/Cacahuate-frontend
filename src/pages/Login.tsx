@@ -124,6 +124,11 @@ const Login: React.FC = () => {
 
   if (!cfg) return <Navigate to="/login" replace />;
 
+  // key resets the form state when switching between portals
+  return <LoginForm key={portal} cfg={cfg} />;
+};
+
+const LoginForm: React.FC<{ cfg: PortalConfig }> = ({ cfg }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

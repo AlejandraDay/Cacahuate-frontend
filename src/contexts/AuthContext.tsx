@@ -1,6 +1,7 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { AuthContext } from './authContextDef';
 import { authService } from '../services/auth';
-import type { AuthContextType, User, RegisterRequest } from '../types';
+import type { User, RegisterRequest } from '../types';
 
 const decodeJwtPayload = (token: string): Record<string, unknown> => {
   try {
@@ -28,42 +29,39 @@ const isTokenExpired = (token: string): boolean => {
   return (exp as number) * 1000 < Date.now();
 };
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Reads the persisted session once, on first render (localStorage is synchronous).
+const restoreSession = (): User | null => {
+  const token = localStorage.getItem('authToken');
+  const refreshToken = localStorage.getItem('refreshToken');
+  const userData = localStorage.getItem('userData');
+
+  if (!token || !userData) return null;
+
+  // If token is expired and there's no refresh token, don't restore the session
+  if (isTokenExpired(token) && !refreshToken) {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    return null;
+  }
+
+  try {
+    const parsed: User = JSON.parse(userData);
+    if (!parsed.id) {
+      parsed.id = extractUserId(token);
+      localStorage.setItem('userData', JSON.stringify(parsed));
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userData');
+    return null;
+  }
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const refreshToken = localStorage.getItem('refreshToken');
-    const userData = localStorage.getItem('userData');
-
-    if (token && userData) {
-      // If token is expired and there's no refresh token, don't restore the session
-      if (isTokenExpired(token) && !refreshToken) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const parsed: User = JSON.parse(userData);
-        if (!parsed.id) {
-          parsed.id = extractUserId(token);
-          localStorage.setItem('userData', JSON.stringify(parsed));
-        }
-        setUser(parsed);
-      } catch {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('userData');
-      }
-    }
-
-    setIsLoading(false);
-  }, []);
+  const [user, setUser] = useState<User | null>(restoreSession);
+  const [isLoading, setIsLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);

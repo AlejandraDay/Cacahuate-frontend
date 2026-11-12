@@ -93,14 +93,16 @@ const TherapistAvailability: React.FC = () => {
   const handleDelete = async (block: AvailabilityBlock) => {
     try {
       setDeleting(block.id)
+      setBlocksError('')
       await schedulingService.deleteAvailability(block.id)
       setBlocks((prev) => prev.filter((b) => b.id !== block.id))
       if (selectedCalDate) {
         const remaining = blocks.filter((b) => b.id !== block.id && b.date === block.date)
         if (remaining.length === 0) setSelectedCalDate(undefined)
       }
-    } catch {
-      setBlocksError('No se pudo eliminar el bloque')
+    } catch (err) {
+      const apiMessage = (err as { response?: { data?: { message?: string } } }).response?.data?.message
+      setBlocksError(apiMessage ?? 'No se pudo eliminar el bloque')
     } finally {
       setDeleting(null)
       setDeleteTarget(null)

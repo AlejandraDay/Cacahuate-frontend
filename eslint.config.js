@@ -18,5 +18,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Fetch-on-mount effects (setLoading(true) + await) are intentional here until
+      // data fetching moves to a dedicated library; keep it visible as a warning.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])

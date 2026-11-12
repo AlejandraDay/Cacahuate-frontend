@@ -285,12 +285,6 @@ const TherapistAppointments: React.FC = () => {
   const [signTarget, setSignTarget] = useState<Appointment | null>(null)
   const prevApptCount = useRef<number | null>(null)
 
-  useEffect(() => {
-    loadAppointments()
-    const interval = setInterval(loadAppointments, 30 * 1000)
-    return () => clearInterval(interval)
-  }, [])
-
   const loadAppointments = async () => {
     try {
       setLoading(true)
@@ -313,6 +307,12 @@ const TherapistAppointments: React.FC = () => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadAppointments()
+    const interval = setInterval(loadAppointments, 30 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleMarkEnRoute = async (id: string) => {
     try {
@@ -418,7 +418,7 @@ const TherapistAppointments: React.FC = () => {
   const upcomingCount = appointments.filter((apt) => {
     const aptDate = toLocalDate(apt.date)
     const today = new Date(); today.setHours(0, 0, 0, 0)
-    const weekOut = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const weekOut = new Date(today); weekOut.setDate(weekOut.getDate() + 7)
     return statusStr(apt.status) === 'confirmed' && aptDate >= today && aptDate <= weekOut
   }).length
 

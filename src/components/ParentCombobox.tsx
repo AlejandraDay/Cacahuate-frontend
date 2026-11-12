@@ -49,10 +49,6 @@ const ParentCombobox: React.FC<ParentComboboxProps> = ({
     return () => clearTimeout(handle);
   }, [query, open]);
 
-  useEffect(() => {
-    if (!value) setSelectedLabel('');
-  }, [value]);
-
   const handleSelect = (p: ParentSummary) => {
     setSelectedLabel(`${p.fullName} · ${p.email}`);
     setQuery('');
@@ -67,7 +63,7 @@ const ParentCombobox: React.FC<ParentComboboxProps> = ({
     onChange('', null);
   };
 
-  const displayValue = open ? query : selectedLabel;
+  const displayValue = open ? query : (value ? selectedLabel : '');
 
   return (
     <div ref={containerRef} className="relative">

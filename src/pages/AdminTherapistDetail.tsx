@@ -131,24 +131,6 @@ const AdminTherapistDetail: React.FC = () => {
     })();
   }, [therapistId]);
 
-  useEffect(() => {
-    if (!therapistId) return;
-    loadAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [therapistId, appointmentsPage, appointmentsPageSize, patientFilter, statusFilter, dateFrom, dateTo]);
-
-  useEffect(() => {
-    if (!therapistId) return;
-    loadRatings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [therapistId, ratingsPage, ratingsPageSize]);
-
-  useEffect(() => {
-    if (!therapistId) return;
-    loadPatientSummaries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [therapistId, patientsPage, patientsPageSize]);
-
   const loadPatientSummaries = async () => {
     if (!therapistId) return;
     try {
@@ -203,6 +185,24 @@ const AdminTherapistDetail: React.FC = () => {
       setAppointmentsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!therapistId) return;
+    loadAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [therapistId, appointmentsPage, appointmentsPageSize, patientFilter, statusFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (!therapistId) return;
+    loadRatings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [therapistId, ratingsPage, ratingsPageSize]);
+
+  useEffect(() => {
+    if (!therapistId) return;
+    loadPatientSummaries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [therapistId, patientsPage, patientsPageSize]);
 
   const handleOpenSubmission = async (submissionId: string) => {
     try {

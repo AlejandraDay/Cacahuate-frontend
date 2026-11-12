@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { ClipboardDocumentListIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import type { Appointment, ProgressData } from '../types'
 
@@ -47,9 +47,10 @@ const ProgressNotesModal: React.FC<ProgressNotesModalProps> = ({
   onClose,
 }) => {
   const [data, setData] = useState<ProgressData>(emptyData)
+  const [loadedFor, setLoadedFor] = useState<Appointment | null>(null)
 
-  useEffect(() => {
-    if (!appointment) return
+  if (appointment && appointment !== loadedFor) {
+    setLoadedFor(appointment)
     setData({
       progressNotes: appointment.progressNotes ?? '',
       objectives: appointment.progressObjectives ?? '',
@@ -62,7 +63,7 @@ const ProgressNotesModal: React.FC<ProgressNotesModalProps> = ({
       recommendations: appointment.progressRecommendations ?? '',
       participationLevel: appointment.progressParticipationLevel,
     })
-  }, [appointment])
+  }
 
   if (!appointment) return null
 
